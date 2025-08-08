@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import { fetchExplanation } from "../lib/apiClient";
 
 interface Word {
   rank: number;
@@ -14,6 +14,18 @@ interface PracticeWord extends Word {
   correctCount: number;
 }
 
+interface Explanation {
+  example: string;
+  explanation: string;
+  definition: string;
+  grammar: string;
+  facts: string;
+  pronunciationIPA: string;
+  pronunciationEnglish: string;
+  word: string; // Added to match the API response
+  englishReference: string; // Added to match the API response
+}
+
 export default function Home() {
   const [vocabularyXP, setVocabularyXP] = useState(0);
   const [words, setWords] = useState<Word[]>([]);
@@ -24,6 +36,10 @@ export default function Home() {
   const [isEditable, setIsEditable] = useState(true);
   const [timer, setTimer] = useState<number | null>(null);
   const [dailyStats, setDailyStats] = useState<{ [date: string]: number; }>({});
+  const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
+  const [explanation, setExplanation] = useState<Explanation | null>(null);
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   const getToday = () => new Date().toISOString().split("T")[0];
@@ -110,11 +126,19 @@ export default function Home() {
     }
   }, [timer]);
 
+  const calculateXP = (responseTime: number) => {
+    if (responseTime <= 2000) return 10;
+    if (responseTime >= 30000) return 1;
+    return Math.ceil(10 - ((responseTime - 2000) / 2800));
+  };
+
   const handleNext = () => {
     setUserInput("");
     setResult("incorrect");
     setIsEditable(true);
     setTimer(null);
+    setQuestionStartTime(Date.now()); // Record the time when the question is presented
+    setExplanation(null);
 
     let nextWord: Word | PracticeWord | null = null;
     let isEnglishToPortuguese = Math.random() < 0.5; // Randomly decide the direction
@@ -173,7 +197,9 @@ export default function Home() {
       : currentWord?.englishWord;
 
     if (normalize(value) === normalize(correctAnswer || "")) {
-      setVocabularyXP(vocabularyXP + 10); // Increment XP
+      const responseTime = Date.now() - (questionStartTime || Date.now());
+      const xpGained = calculateXP(responseTime);
+      setVocabularyXP(vocabularyXP + xpGained); // Increment XP based on response time
       setResult("correct");
       setIsEditable(false);
       setTimer(500);
@@ -231,6 +257,52 @@ export default function Home() {
     }
   };
 
+  const speak = () => {
+    if (currentWord) {
+      const utterance = new SpeechSynthesisUtterance(
+        currentWord.isEnglishToPortuguese ? currentWord.englishWord : currentWord.targetWord
+      );
+      utterance.lang = currentWord.isEnglishToPortuguese ? "en-US" : "pt-PT";
+      speechSynthesis.speak(utterance);
+    }
+  };
+
+  const speakPt = () => {
+    const utterance = new SpeechSynthesisUtterance(
+      currentWord?.targetWord
+    );
+    utterance.lang = "pt-PT";
+    speechSynthesis.speak(utterance);
+  };
+
+  const explainWord = async () => {
+    if (!currentWord) return;
+    setIsPanelOpen(true);
+    setLoadingExplanation(true);
+    setResult("explaining");
+    try {
+      const data = await fetchExplanation(currentWord.targetWord, currentWord.englishWord);
+      setExplanation({ ...data, word: currentWord.targetWord, englishReference: currentWord.englishWord });
+      setResult("explained");
+      if (currentWord.isEnglishToPortuguese) {
+        setUserInput(currentWord.targetWord);
+      } else {
+        setUserInput(currentWord.englishWord);
+      }
+      speakPt();
+      if (!("correctCount" in currentWord)) {
+        setPracticeWords((prev) => [
+          ...prev,
+          { ...currentWord, correctCount: 0 },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch explanation", error);
+    } finally {
+      setLoadingExplanation(false);
+    }
+  };
+
   const today = getToday();
   const yesterday = new Date(new Date().setDate(new Date().getDate() - 1))
     .toISOString()
@@ -263,36 +335,45 @@ export default function Home() {
     .join("");
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100 flex flex-col items-center justify-center p-4">
-      <pre className="bg-neutral-800 p-4 rounded-lg shadow-lg text-sm w-full max-w-lg relative">
-        <code>
-          {`{
+    <div className="bg-neutral-900 text-neutral-100" style={{ display: "flex", flexDirection: "row", width: "100%", height: "100vh" }}>
+      <div
+        style={{
+          flexGrow: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          border: "1px solid #333",
+        }}
+      >
+        <pre className="bg-neutral-800 p-4 rounded-lg shadow-lg text-sm w-full max-w-lg relative">
+          <code>
+            {`{
   "xp": ${vocabularyXP},
   "word": {
     "portuguese": "`}
 
-          <input
-            name="portuguese"
-            type="text"
-            value={currentWord?.isEnglishToPortuguese ? userInput : currentWord?.targetWord || ""}
-            onChange={(e) => handleInputChange(e.target.value)}
-            className={`bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 ${isEditable && currentWord?.isEnglishToPortuguese ? "focus:border-neutral-400" : "cursor-not-allowed"
-              }`}
-            disabled={!isEditable || !currentWord?.isEnglishToPortuguese}
-          />
-          {`",
+            <input
+              name="portuguese"
+              type="text"
+              value={currentWord?.isEnglishToPortuguese ? userInput : currentWord?.targetWord || ""}
+              onChange={(e) => handleInputChange(e.target.value)}
+              className={`bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 ${isEditable && currentWord?.isEnglishToPortuguese ? "focus:border-neutral-400" : "cursor-not-allowed"
+                }`}
+              disabled={!isEditable || !currentWord?.isEnglishToPortuguese}
+            />
+            {`",
     "english": "`}
 
-          <input
-            name="english"
-            type="text"
-            value={currentWord?.isEnglishToPortuguese ? currentWord?.englishWord || "" : userInput}
-            onChange={(e) => handleInputChange(e.target.value)}
-            className={`bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 ${isEditable && !currentWord?.isEnglishToPortuguese ? "focus:border-neutral-400" : "cursor-not-allowed"
-              }`}
-            disabled={!isEditable || currentWord?.isEnglishToPortuguese}
-          />
-          {`"
+            <input
+              name="english"
+              type="text"
+              value={currentWord?.isEnglishToPortuguese ? currentWord?.englishWord || "" : userInput}
+              onChange={(e) => handleInputChange(e.target.value)}
+              className={`bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 ${isEditable && !currentWord?.isEnglishToPortuguese ? "focus:border-neutral-400" : "cursor-not-allowed"
+                }`}
+              disabled={!isEditable || currentWord?.isEnglishToPortuguese}
+            />
+            {`"
   },
   "result": "${result}",
   "dailyStats": {
@@ -301,24 +382,104 @@ export default function Home() {
     "histogram": "${histogram}",
     "practiceListLength": ${practiceWords.length}
   },
-  "actions": {
-    "show": `}
-          <button
-            onClick={handleShow}
-            className="text-blue-400 hover:underline"
-          >
-            "Show"
-          </button>
-          {`
-  }
+  "actions": [
+    `}
+            <button
+              onClick={handleShow}
+              className="text-blue-400 hover:underline"
+            >
+              "Show"
+            </button>
+            {`,\n    `}
+            <button
+              onClick={handleNext}
+              className="text-blue-400 hover:underline"
+            >
+              "Next"
+            </button>
+            {`,\n    `}
+            <button
+              onClick={speak}
+              disabled={!currentWord}
+              className="text-blue-400 hover:underline"
+            >
+              "Speak"
+            </button>
+            {`,\n    `}
+            <button
+              onClick={explainWord}
+              disabled={!currentWord || loadingExplanation}
+              className="text-blue-400 hover:underline"
+            >
+              "Explain"
+            </button>
+            {`
+  ]
 }`}
-        </code>
-        {timer !== null && (
-          <div className="absolute bottom-2 right-2 text-neutral-400 text-xs">
-            {`Next in ${Math.ceil(timer)}ms`}
-          </div>
-        )}
-      </pre>
+          </code>
+          {timer !== null && (
+            <div className="absolute bottom-2 right-2 text-neutral-400 text-xs">
+              {`Next in ${Math.ceil(timer)}ms`}
+            </div>
+          )}
+        </pre>
+      </div>
+      <div
+        className="bg-neutral-800"
+        style={{
+          width: "800px",
+          color: "#d4d4d4",
+          padding: "1rem",
+          borderLeft: "1px solid #333",
+          alignSelf: "stretch",
+          overflowY: "scroll",
+          overflowX: 'hidden',
+          fontFamily: "monospace",
+        }}
+      >
+        {(() => {
+          if (loadingExplanation) {
+            return <div className="text-neutral-400">Loading ...</div>;
+          }
+          if (explanation) {
+            return (
+              <div className="text-neutral-100">
+                <div className="text-2xl font-bold">
+                  <strong>{explanation.word}</strong> <span className="text-neutral-400">({explanation.englishReference})</span>
+                </div>
+                <div className="text-neutral-400">
+                  {explanation.pronunciationIPA} <span>({explanation.pronunciationEnglish})</span>
+                </div>
+                <div className="mt-4">
+                  <strong>Example</strong>
+                  <div className="text-sm"><pre style={{ whiteSpace: 'pre-wrap' }}>{explanation.example}</pre></div>
+                </div>
+                <div className="mt-4">
+                  <strong>Explanation</strong>
+                  <div className="text-sm"><pre style={{ whiteSpace: 'pre-wrap' }}>{explanation.explanation}</pre></div>
+                </div>
+                <div className="mt-4">
+                  <strong>Definition</strong>
+                  <div className="text-sm"><pre style={{ whiteSpace: 'pre-wrap' }}>{explanation.definition}</pre></div>
+                </div>
+                <div className="mt-4">
+                  <strong>Grammar</strong>
+                  <div className="text-sm"><pre style={{ whiteSpace: 'pre-wrap' }}>{explanation.grammar}</pre></div>
+                </div>
+                <div className="mt-4">
+                  <strong>Facts</strong>
+                  <div className="text-sm"><pre style={{ whiteSpace: 'pre-wrap' }}>{explanation.facts}</pre></div>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div className="text-neutral-400">
+              ✨
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 }
