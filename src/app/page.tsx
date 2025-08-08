@@ -39,7 +39,6 @@ export default function Home() {
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const [loadingExplanation, setLoadingExplanation] = useState(false);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   const getToday = () => new Date().toISOString().split("T")[0];
@@ -106,31 +105,14 @@ export default function Home() {
   }, [vocabularyXP, practiceWords, dailyStats]);
 
   useEffect(() => {
-    if (timer === 0) {
-      handleNext();
-    } else if (timer !== null) {
-      const start = performance.now();
-      const updateTimer = (timestamp: number) => {
-        const elapsed = timestamp - start;
-        setTimer((prev) => (prev !== null ? Math.max(0, prev - elapsed) : null));
-        if (timerRef.current !== null && timer > 0) {
-          timerRef.current = requestAnimationFrame(updateTimer);
-        }
-      };
-      timerRef.current = requestAnimationFrame(updateTimer);
-      return () => {
-        if (timerRef.current !== null) {
-          cancelAnimationFrame(timerRef.current);
-        }
-      };
+    const hash = window.location.hash;
+    const match = hash.match(/^#auth_(.+)$/);
+    if (match) {
+      const authKey = match[1];
+      localStorage.setItem('auth', authKey);
+      window.location.hash = ''; // Clear the hash from the URL
     }
-  }, [timer]);
-
-  const calculateXP = (responseTime: number) => {
-    if (responseTime <= 2000) return 10;
-    if (responseTime >= 30000) return 1;
-    return Math.ceil(10 - ((responseTime - 2000) / 2800));
-  };
+  }, []);
 
   const handleNext = () => {
     setUserInput("");
@@ -160,7 +142,7 @@ export default function Home() {
     }
 
     if (!(nextWord?.isEnglishToPortuguese)) {
-      const utterance = new SpeechSynthesisUtterance(nextWord!!.targetWord);
+      const utterance = new SpeechSynthesisUtterance(nextWord?.targetWord || ""); // Removed extra non-null assertion
       utterance.lang = "pt-PT";
       speechSynthesis.speak(utterance);
     }
@@ -181,6 +163,33 @@ export default function Home() {
         }
       }
     }, 0);
+  };
+
+  useEffect(() => {
+    if (timer === 0) {
+      handleNext();
+    } else if (timer !== null) {
+      const start = performance.now();
+      const updateTimer = (timestamp: number) => {
+        const elapsed = timestamp - start;
+        setTimer((prev) => (prev !== null ? Math.max(0, prev - elapsed) : null));
+        if (timerRef.current !== null && timer > 0) {
+          timerRef.current = requestAnimationFrame(updateTimer);
+        }
+      };
+      timerRef.current = requestAnimationFrame(updateTimer);
+      return () => {
+        if (timerRef.current !== null) {
+          cancelAnimationFrame(timerRef.current);
+        }
+      };
+    }
+  }, [timer, handleNext]); // Added 'handleNext' to dependency array
+
+  const calculateXP = (responseTime: number) => {
+    if (responseTime <= 2000) return 10;
+    if (responseTime >= 30000) return 1;
+    return Math.ceil(10 - ((responseTime - 2000) / 2800));
   };
 
   const handleInputChange = (value: string) => {
@@ -275,23 +284,10 @@ export default function Home() {
     speechSynthesis.speak(utterance);
   };
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash;
-      const match = hash.match(/^#auth_(.+)$/);
-      if (match) {
-        const authKey = match[1];
-        localStorage.setItem('auth', authKey);
-        window.location.href = window.location.href.split('#')[0]; // Remove the hash from the URL
-      }
-    }
-  }, []);
-
   const authKey = typeof window !== 'undefined' ? localStorage.getItem('auth') : null;
 
   const explainWord = async () => {
     if (!currentWord || !authKey) return;
-    setIsPanelOpen(true);
     setLoadingExplanation(true);
     setResult("explaining");
     try {
@@ -400,9 +396,9 @@ export default function Home() {
     `}
             <button
               onClick={handleShow}
-              className="text-blue-400 hover:underline cursor-pointer"
+              className="text-blue-400 hover:underline"
             >
-              "Show"
+              &quot;Show&quot;
             </button>
             {`,\n    `}
             <button
@@ -415,9 +411,9 @@ export default function Home() {
             <button
               onClick={speak}
               disabled={!currentWord}
-              className="text-blue-400 hover:underline cursor-pointer"
+              className="text-blue-400 hover:underline"
             >
-              "Speak"
+              &quot;Speak&quot;
             </button>
             {`,\n    `}
             <button
@@ -425,7 +421,7 @@ export default function Home() {
               disabled={!currentWord || loadingExplanation || !authKey}
               className={!currentWord || loadingExplanation || !authKey ? "text-gray-400" : "text-blue-400 hover:underline"}
             >
-              "Explain"
+              &quot;Explain&quot;
             </button>
             {`
   ]
