@@ -22,6 +22,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    const authKey = req.headers.authorization?.split(' ')[1];
+    if (!authKey || authKey !== process.env.PRESHARED_KEY) {
+        return res.status(403).json({ error: 'Forbidden: Invalid or missing auth key' });
+    }
+
     const { word, englishReference } = req.body;
     if (!word || !englishReference) {
         return res.status(400).json({ error: 'Word and English reference are required' });

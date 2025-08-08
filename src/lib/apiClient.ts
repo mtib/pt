@@ -1,4 +1,4 @@
-export async function fetchExplanation(word: string, englishReference: string) {
+export async function fetchExplanation(word: string, englishReference: string, authKey: string) {
     const cachedData = localStorage.getItem('explanations');
     const explanations = cachedData ? JSON.parse(cachedData) : {};
 
@@ -10,6 +10,7 @@ export async function fetchExplanation(word: string, englishReference: string) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authKey}`,
         },
         body: JSON.stringify({ word, englishReference }),
     });

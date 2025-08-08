@@ -275,13 +275,27 @@ export default function Home() {
     speechSynthesis.speak(utterance);
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      const match = hash.match(/^#auth_(.+)$/);
+      if (match) {
+        const authKey = match[1];
+        localStorage.setItem('auth', authKey);
+        window.location.href = window.location.href.split('#')[0]; // Remove the hash from the URL
+      }
+    }
+  }, []);
+
+  const authKey = typeof window !== 'undefined' ? localStorage.getItem('auth') : null;
+
   const explainWord = async () => {
-    if (!currentWord) return;
+    if (!currentWord || !authKey) return;
     setIsPanelOpen(true);
     setLoadingExplanation(true);
     setResult("explaining");
     try {
-      const data = await fetchExplanation(currentWord.targetWord, currentWord.englishWord);
+      const data = await fetchExplanation(currentWord.targetWord, currentWord.englishWord, authKey);
       setExplanation({ ...data, word: currentWord.targetWord, englishReference: currentWord.englishWord });
       setResult("explained");
       if (currentWord.isEnglishToPortuguese) {
@@ -386,14 +400,14 @@ export default function Home() {
     `}
             <button
               onClick={handleShow}
-              className="text-blue-400 hover:underline"
+              className="text-blue-400 hover:underline cursor-pointer"
             >
               "Show"
             </button>
             {`,\n    `}
             <button
               onClick={handleNext}
-              className="text-blue-400 hover:underline"
+              className="text-blue-400 hover:underline cursor-pointer"
             >
               "Next"
             </button>
@@ -401,15 +415,15 @@ export default function Home() {
             <button
               onClick={speak}
               disabled={!currentWord}
-              className="text-blue-400 hover:underline"
+              className="text-blue-400 hover:underline cursor-pointer"
             >
               "Speak"
             </button>
             {`,\n    `}
             <button
               onClick={explainWord}
-              disabled={!currentWord || loadingExplanation}
-              className="text-blue-400 hover:underline"
+              disabled={!currentWord || loadingExplanation || !authKey}
+              className={!currentWord || loadingExplanation || !authKey ? "text-gray-400" : "text-blue-400 hover:underline"}
             >
               "Explain"
             </button>
