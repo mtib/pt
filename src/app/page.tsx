@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { fetchExplanation } from "../lib/apiClient";
 
 interface Word {
@@ -114,7 +114,7 @@ export default function Home() {
     }
   }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     setUserInput("");
     setResult("incorrect");
     setIsEditable(true);
@@ -163,7 +163,7 @@ export default function Home() {
         }
       }
     }, 0);
-  };
+  }, [practiceWords, words, currentWord]); // Added dependencies
 
   useEffect(() => {
     if (timer === 0) {
@@ -220,7 +220,7 @@ export default function Home() {
       }));
 
       if (currentWord?.isEnglishToPortuguese) {
-        const utterance = new SpeechSynthesisUtterance(currentWord!!.targetWord);
+        const utterance = new SpeechSynthesisUtterance(currentWord.targetWord);
         utterance.lang = "pt-PT";
         speechSynthesis.speak(utterance);
       }
@@ -352,10 +352,11 @@ export default function Home() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          border: "1px solid #333",
         }}
       >
-        <pre className="bg-neutral-800 p-4 rounded-lg shadow-lg text-sm w-full max-w-lg relative">
+        <pre className="bg-neutral-800 p-4 rounded-lg shadow-lg text-sm w-full max-w-lg relative " style={{
+          border: "1px solid #333",
+        }}>
           <code>
             {`{
   "xp": ${vocabularyXP},
@@ -405,7 +406,7 @@ export default function Home() {
               onClick={handleNext}
               className="text-blue-400 hover:underline cursor-pointer"
             >
-              "Next"
+              &quot;Next&quot;
             </button>
             {`,\n    `}
             <button
