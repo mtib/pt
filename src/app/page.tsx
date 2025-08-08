@@ -7,6 +7,7 @@ interface Word {
   rank: number;
   targetWord: string;
   englishWord: string;
+  isEnglishToPortuguese?: boolean; // Added optional property
 }
 
 interface PracticeWord extends Word {
@@ -22,7 +23,7 @@ export default function Home() {
   const [result, setResult] = useState("incorrect");
   const [isEditable, setIsEditable] = useState(true);
   const [timer, setTimer] = useState<number | null>(null);
-  const [dailyStats, setDailyStats] = useState<{ [date: string]: number }>({});
+  const [dailyStats, setDailyStats] = useState<{ [date: string]: number; }>({});
   const timerRef = useRef<number | null>(null);
 
   const getToday = () => new Date().toISOString().split("T")[0];
@@ -44,8 +45,40 @@ export default function Home() {
       .then((response) => response.json())
       .then((data) => {
         const shuffledWords = data.words.sort(() => Math.random() - 0.5);
+        const firstWord = { ...shuffledWords[0], isEnglishToPortuguese: Math.random() < 0.5 };
         setWords(shuffledWords);
-        setCurrentWord(shuffledWords[0]);
+        setCurrentWord(firstWord);
+
+        // Speak the first word if it is Portuguese
+        if (!firstWord.isEnglishToPortuguese && firstWord.targetWord) {
+          const utterance = new SpeechSynthesisUtterance(firstWord.targetWord);
+          utterance.lang = "pt-PT";
+          speechSynthesis.speak(utterance);
+        }
+
+        // Enable the correct input box for the first word
+        setTimeout(() => {
+          const portugueseInput = document.querySelector<HTMLInputElement>("input[name='portuguese']");
+          const englishInput = document.querySelector<HTMLInputElement>("input[name='english']");
+
+          if (firstWord.isEnglishToPortuguese) {
+            if (portugueseInput) {
+              portugueseInput.disabled = false;
+              portugueseInput.focus();
+            }
+            if (englishInput) {
+              englishInput.disabled = true;
+            }
+          } else {
+            if (englishInput) {
+              englishInput.disabled = false;
+              englishInput.focus();
+            }
+            if (portugueseInput) {
+              portugueseInput.disabled = true;
+            }
+          }
+        }, 0);
       });
   }, []);
 
@@ -84,39 +117,62 @@ export default function Home() {
     setTimer(null);
 
     let nextWord: Word | PracticeWord | null = null;
+    let isEnglishToPortuguese = Math.random() < 0.5; // Randomly decide the direction
 
     const practiceChance = Math.min(0.3 + (practiceWords.length / 20) * 0.7, 1);
     if (practiceWords.length > 0 && Math.random() < practiceChance) {
-      nextWord = practiceWords[Math.floor(Math.random() * practiceWords.length)];
+      const practiceWord = practiceWords[Math.floor(Math.random() * practiceWords.length)];
+      isEnglishToPortuguese = practiceWord.isEnglishToPortuguese ?? isEnglishToPortuguese; // Use the same direction as the practice word
+      nextWord = { ...practiceWord, isEnglishToPortuguese };
     } else {
       const availableWords = words.filter((word) => !practiceWords.some((pWord) => pWord.rank === word.rank));
       if (availableWords.length > 0) {
-        nextWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+        nextWord = { ...availableWords[Math.floor(Math.random() * availableWords.length)], isEnglishToPortuguese };
       }
     }
 
-    setCurrentWord(nextWord);
+    if (nextWord) {
+      setCurrentWord({ ...nextWord, isEnglishToPortuguese });
+    }
 
-    // Text-to-speech for the Portuguese word
-    if (nextWord?.targetWord) {
-      const utterance = new SpeechSynthesisUtterance(nextWord.targetWord);
+    if (!(nextWord?.isEnglishToPortuguese)) {
+      const utterance = new SpeechSynthesisUtterance(nextWord!!.targetWord);
       utterance.lang = "pt-PT";
       speechSynthesis.speak(utterance);
     }
 
+
     // Ensure the input field is auto-focused after setting the next word
     setTimeout(() => {
-      const inputElement = document.querySelector<HTMLInputElement>("input[type='text']");
-      if (inputElement) {
-        inputElement.disabled = false; // Temporarily enable the input field if disabled
-        inputElement.focus();
+      const portugueseInput = document.querySelector<HTMLInputElement>("input[name='portuguese']");
+      const englishInput = document.querySelector<HTMLInputElement>("input[name='english']");
+
+      if (currentWord?.isEnglishToPortuguese) {
+        if (portugueseInput) {
+          portugueseInput.focus();
+        }
+      } else {
+        if (englishInput) {
+          englishInput.focus();
+        }
       }
     }, 0);
   };
 
   const handleInputChange = (value: string) => {
     setUserInput(value);
-    if (value.trim().toLowerCase() === currentWord?.englishWord.toLowerCase()) {
+    const normalize = (str: string) =>
+      str
+        .normalize("NFD") // Decompose accents
+        .replace(/\p{Diacritic}/gu, "") // Remove accents
+        .replace(/\s+/g, "") // Remove spaces
+        .toLowerCase();
+
+    const correctAnswer = currentWord?.isEnglishToPortuguese
+      ? currentWord?.targetWord
+      : currentWord?.englishWord;
+
+    if (normalize(value) === normalize(correctAnswer || "")) {
       setVocabularyXP(vocabularyXP + 10); // Increment XP
       setResult("correct");
       setIsEditable(false);
@@ -128,13 +184,21 @@ export default function Home() {
         [today]: (prev[today] || 0) + 1,
       }));
 
-      if ("correctCount" in currentWord) {
-        const updatedPracticeWords = practiceWords.map((word) => {
-          if (word.rank === currentWord.rank) {
-            return { ...word, correctCount: word.correctCount + 1 };
-          }
-          return word;
-        }).filter((word) => word.correctCount < 3);
+      if (currentWord?.isEnglishToPortuguese) {
+        const utterance = new SpeechSynthesisUtterance(currentWord!!.targetWord);
+        utterance.lang = "pt-PT";
+        speechSynthesis.speak(utterance);
+      }
+
+      if (currentWord && "correctCount" in currentWord) {
+        const updatedPracticeWords = practiceWords
+          .map((word) => {
+            if (word.rank === currentWord.rank) {
+              return { ...word, correctCount: word.correctCount + 1 };
+            }
+            return word;
+          })
+          .filter((word) => word.correctCount < 3);
 
         setPracticeWords(updatedPracticeWords);
       }
@@ -145,16 +209,18 @@ export default function Home() {
 
   const handleShow = () => {
     if (currentWord) {
-      setUserInput(currentWord.englishWord);
+      if (currentWord.isEnglishToPortuguese) {
+        setUserInput(currentWord.targetWord);
+        const utterance = new SpeechSynthesisUtterance(currentWord.targetWord);
+        utterance.lang = "pt-PT";
+        speechSynthesis.speak(utterance);
+      }
+      else {
+        setUserInput(currentWord.englishWord);
+      }
       setResult("revealed");
       setIsEditable(false);
       setTimer(2000);
-
-      // Auto-focus the input field
-      const inputElement = document.querySelector<HTMLInputElement>("input[type='text']");
-      if (inputElement) {
-        inputElement.focus();
-      }
 
       if (!("correctCount" in currentWord)) {
         setPracticeWords((prev) => [
@@ -203,17 +269,28 @@ export default function Home() {
           {`{
   "xp": ${vocabularyXP},
   "word": {
-    "portuguese": "${currentWord?.targetWord || ""}",
+    "portuguese": "`}
+
+          <input
+            name="portuguese"
+            type="text"
+            value={currentWord?.isEnglishToPortuguese ? userInput : currentWord?.targetWord || ""}
+            onChange={(e) => handleInputChange(e.target.value)}
+            className={`bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 ${isEditable && currentWord?.isEnglishToPortuguese ? "focus:border-neutral-400" : "cursor-not-allowed"
+              }`}
+            disabled={!isEditable || !currentWord?.isEnglishToPortuguese}
+          />
+          {`",
     "english": "`}
 
           <input
+            name="english"
             type="text"
-            value={userInput}
+            value={currentWord?.isEnglishToPortuguese ? currentWord?.englishWord || "" : userInput}
             onChange={(e) => handleInputChange(e.target.value)}
-            className={`bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 ${
-              isEditable ? "focus:border-neutral-400" : "cursor-not-allowed"
-            }`}
-            disabled={!isEditable}
+            className={`bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 ${isEditable && !currentWord?.isEnglishToPortuguese ? "focus:border-neutral-400" : "cursor-not-allowed"
+              }`}
+            disabled={!isEditable || currentWord?.isEnglishToPortuguese}
           />
           {`"
   },
