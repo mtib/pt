@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Learn European Portuguese
+
+This is an interactive application to learn European Portuguese. It includes features like XP tracking, daily stats, and practice lists.
 
 ## Getting Started
+
+### Development
 
 First, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Environment Variables
 
-## Learn More
+Before running the application, ensure you have the required environment variables set up. Create a `.env` file in the root of the project and add the following variables:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+PRESHARED_KEY=your_preshared_key_here
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+You can use the `.env.example` file as a reference.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Passing the Auth Key
 
-## Deploy on Vercel
+To use the application, you need to pass the pre-shared auth key. This can be done by appending the key to the URL hash in the following format:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+http://localhost:3000/#auth_YOUR_AUTH_KEY
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Replace `YOUR_AUTH_KEY` with the actual key. The application will automatically extract the key from the URL, store it in `localStorage`, and use it for API requests.
+
+### Production
+
+To build and run the application in production:
+
+1. Build the application:
+   ```bash
+   npm run build
+   ```
+
+2. Start the application:
+   ```bash
+   npm start
+   ```
+
+### Docker
+
+This project includes a `Dockerfile` for containerized deployment. To build and run the Docker container:
+
+1. Build the Docker image:
+   ```bash
+   docker build -t pt-learn .
+   ```
+
+2. Run the Docker container:
+   ```bash
+   docker run -d \
+     --name pt \
+     -p 3000:3000 \
+     --env-file .env \
+     --restart unless-stopped \
+     pt-learn
+   ```
+
+The application will be accessible at [http://localhost:3000](http://localhost:3000).
+
+## Features
+
+- XP tracking to measure your progress.
+- Daily stats to keep track of your learning habits.
+- Practice lists to reinforce your vocabulary.
+
+## Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests to improve the project.
