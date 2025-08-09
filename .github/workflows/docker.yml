@@ -4,10 +4,10 @@ name: Docker Build & Publish
 
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches: [main]
+    tags: ["v*"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   REGISTRY: ghcr.io
@@ -81,13 +81,13 @@ jobs:
             -e OPENAI_API_KEY=test-key \
             -e PRESHARED_KEY=test-key \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-          
+
           # Wait for the container to start
           sleep 10
-          
+
           # Test health endpoint
           curl -f http://localhost:3000/api/health || exit 1
-          
+
           # Cleanup
           docker stop test-container
 

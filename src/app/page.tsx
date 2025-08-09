@@ -21,7 +21,6 @@ import {
   useTimer
 } from '@/hooks';
 import {
-  normalizeText,
   isAnswerCorrect,
   calculateXP,
   selectNextWord,

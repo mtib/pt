@@ -13,7 +13,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
-import { ExplainRequest, Explanation, ApiErrorResponse } from '@/types';
+import { Explanation, ApiErrorResponse } from '@/types';
 
 // Input validation schema
 const RequestSchema = z.object({
