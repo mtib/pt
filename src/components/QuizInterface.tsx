@@ -11,6 +11,10 @@
 import React, { useEffect, useRef } from 'react';
 import { formatTimer } from '@/utils/vocabulary';
 import { useLearningContext } from '@/contexts';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Kbd } from '@/components/ui/kbd';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 /**
  * Main quiz interface component
@@ -99,41 +103,42 @@ export const QuizInterface: React.FC = () => {
   `;
 
     return (
-        <div className="flex justify-center items-center flex-grow">
-            <div className="relative lg:px-2">
-                <pre className="lg:bg-neutral-800 p-3 lg:rounded-lg lg:shadow-lg lg:border border-neutral-700 overflow-x-hidden">
-                    <code>
-                        {`{
+        <div className="flex justify-center items-center flex-grow p-4">
+            <Card className="w-full max-w-2xl font-mono">
+                <CardContent className="p-6">
+                    <pre className="overflow-x-auto">
+                        <code>
+                            {`{
   "xp": ${vocabularyXP},
   "word": {
     "portuguese": "`}
 
-                        <input
-                            ref={portugueseInputRef}
-                            name="portuguese"
-                            type="text"
-                            value={currentWord?.direction === 'en-to-pt' ? userInput : currentWord?.translation_pt || ''}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && currentWord?.direction === 'en-to-pt')}
-                            disabled={!isEditable || currentWord?.direction !== 'en-to-pt'}
-                            aria-label="Portuguese word input"
-                            autoComplete="off"
-                        />
-                        {`",
+                            <Input
+                                ref={portugueseInputRef}
+                                name="portuguese"
+                                type="text"
+                                value={currentWord?.direction === 'en-to-pt' ? userInput : currentWord?.translation_pt || ''}
+                                onChange={(e) => handleInputChange(e.target.value)}
+                                className="bg-transparent border-0 border-b rounded-none"
+                                disabled={!isEditable || currentWord?.direction !== 'en-to-pt'}
+                                aria-label="Portuguese word input"
+                                autoComplete="off"
+                            />
+                            {`",
     "english": "`}
 
-                        <input
-                            ref={englishInputRef}
-                            name="english"
-                            type="text"
-                            value={currentWord?.direction === 'en-to-pt' ? currentWord?.translation_en || '' : userInput}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && currentWord?.direction === 'pt-to-en')}
-                            disabled={!isEditable || currentWord?.direction !== 'pt-to-en'}
-                            aria-label="English word input"
-                            autoComplete="off"
-                        />
-                        {`"
+                            <Input
+                                ref={englishInputRef}
+                                name="english"
+                                type="text"
+                                value={currentWord?.direction === 'en-to-pt' ? currentWord?.translation_en || '' : userInput}
+                                onChange={(e) => handleInputChange(e.target.value)}
+                                className="bg-transparent border-0 border-b rounded-none"
+                                disabled={!isEditable || currentWord?.direction !== 'pt-to-en'}
+                                aria-label="English word input"
+                                autoComplete="off"
+                            />
+                            {`"
   },
   "result": "${result}",
   "dailyStats": {
@@ -144,61 +149,62 @@ export const QuizInterface: React.FC = () => {
   },
   "actions": [
     `}
-                        <button
-                            onClick={handleShow}
-                            className={getButtonClassName()}
-                            title="Show answer (S)"
-                            aria-label="Show answer"
-                        >
-                            &quot;Show&quot;
-                        </button>
-                        {`,\n    `}
-                        <button
-                            onClick={handleNext}
-                            className={getButtonClassName()}
-                            title="Next word (N)"
-                            aria-label="Next word"
-                        >
-                            &quot;Next&quot;
-                        </button>
-                        {`,\n    `}
-                        <button
-                            onClick={handleSpeak}
-                            disabled={!currentWord}
-                            className={getButtonClassName(!currentWord)}
-                            title="Speak word (Space)"
-                            aria-label="Speak word"
-                        >
-                            &quot;Speak&quot;
-                        </button>
-                        {`,\n    `}
-                        <button
-                            onClick={handleExplain}
-                            disabled={!currentWord || loadingExplanation || !isAuthenticated}
-                            className={getButtonClassName(!currentWord || loadingExplanation || !isAuthenticated)}
-                            title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}
-                            aria-label="Explain word"
-                        >
-                            &quot;{loadingExplanation ? 'Loading...' : 'Explain'}&quot;
-                        </button>
-                        {`
+                            <Button
+                                onClick={handleShow}
+                                variant="link"
+                                title="Show answer (S)"
+                                aria-label="Show answer"
+                            >
+                                &quot;Show&quot;
+                            </Button>
+                            {`,\n    `}
+                            <Button
+                                onClick={handleNext}
+                                variant="link"
+                                title="Next word (N)"
+                                aria-label="Next word"
+                            >
+                                &quot;Next&quot;
+                            </Button>
+                            {`,\n    `}
+                            <Button
+                                onClick={handleSpeak}
+                                disabled={!currentWord}
+                                variant="link"
+                                title="Speak word (Space)"
+                                aria-label="Speak word"
+                            >
+                                &quot;Speak&quot;
+                            </Button>
+                            {`,\n    `}
+                            <Button
+                                onClick={handleExplain}
+                                disabled={!currentWord || loadingExplanation || !isAuthenticated}
+                                variant="link"
+                                title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}
+                                aria-label="Explain word"
+                            >
+                                &quot;{loadingExplanation ? 'Loading...' : 'Explain'}&quot;
+                            </Button>
+                            {`
   ],
   "nextIn": "${remainingTime !== null ? formatTimer(remainingTime) : 'infinity'}"
 }
 `}
-                    </code>
-                </pre>
-
-                {/* Keyboard shortcuts help - Hidden on mobile, shown on larger screens */}
-                <div className="mt-2 text-xs text-neutral-500 lg:block hidden">
-                    Shortcuts: <kbd className="px-1 py-0.5 bg-neutral-700 rounded">N</kbd> Next •
-                    <kbd className="px-1 py-0.5 bg-neutral-700 rounded">S</kbd> Show •
-                    <kbd className="px-1 py-0.5 bg-neutral-700 rounded">Space</kbd> Speak
-                    {isAuthenticated && (
-                        <> • <kbd className="px-1 py-0.5 bg-neutral-700 rounded">E</kbd> Explain</>
-                    )}
-                </div>
-            </div>
+                        </code>
+                    </pre>
+                </CardContent>
+                <CardFooter>
+                    <div className="text-xs text-muted-foreground">
+                        Shortcuts: <Kbd>N</Kbd> Next •
+                        <Kbd>S</Kbd> Show •
+                        <Kbd>Space</Kbd> Speak
+                        {isAuthenticated && (
+                            <> • <Kbd>E</Kbd> Explain</>
+                        )}
+                    </div>
+                </CardFooter>
+            </Card>
         </div>
     );
 };

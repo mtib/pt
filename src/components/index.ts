@@ -8,8 +8,7 @@
  * @version 1.0.0
  */
 
-export { ErrorBoundary } from './ErrorBoundary';
-export { LoadingSpinner } from './LoadingSpinner';
-export { QuizInterface } from './QuizInterface';
-export { ExplanationPanel } from './ExplanationPanel';
 export { default as AuthGuard } from './AuthGuard';
+export { ErrorBoundary } from './ErrorBoundary';
+export { ExplanationPanel } from './ExplanationPanel';
+export { QuizInterface } from './QuizInterface';
