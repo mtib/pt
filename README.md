@@ -94,32 +94,6 @@ To use the AI explanation features:
 - **Data Validation**: Zod for runtime type checking
 - **Code Quality**: ESLint + TypeScript for type safety
 
-### Project Structure
-```
-src/
-├── app/                  # Next.js App Router pages
-│   ├── globals.css      # Global styles and theme
-│   ├── layout.tsx       # Root layout component
-│   └── page.tsx         # Main application page
-├── components/          # Reusable UI components
-│   ├── ErrorBoundary.tsx
-│   ├── ExplanationPanel.tsx
-│   ├── LoadingSpinner.tsx
-│   ├── QuizInterface.tsx
-│   └── index.ts
-├── hooks/               # Custom React hooks
-│   └── index.ts         # State management and utilities
-├── lib/                 # Core utilities and API clients
-│   ├── apiClient.ts     # API communication with caching
-│   └── utils.ts         # UI utilities and re-exports
-├── pages/api/           # API routes
-│   └── explain.ts       # OpenAI explanation endpoint
-├── types/               # TypeScript type definitions
-│   └── index.ts         # Core interfaces and constants
-└── utils/               # Pure utility functions
-    └── vocabulary.ts    # Vocabulary-specific logic
-```
-
 ### Key Design Patterns
 
 #### 🪝 Custom Hooks

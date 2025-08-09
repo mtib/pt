@@ -8,8 +8,8 @@
  * @version 1.0.0
  */
 
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 // Re-export vocabulary utilities for easy access
 export * from '@/utils/vocabulary';
@@ -27,5 +27,5 @@ export * from '@/utils/vocabulary';
  * ```
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }

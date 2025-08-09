@@ -13,20 +13,20 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Word, PracticeWord, Explanation, QuizResult, CONFIG } from '@/types';
-import { 
-  useVocabularyProgress, 
-  useDailyStats, 
-  useAuth, 
-  useSpeechSynthesis, 
-  useTimer 
+import {
+  useVocabularyProgress,
+  useDailyStats,
+  useAuth,
+  useSpeechSynthesis,
+  useTimer
 } from '@/hooks';
-import { 
-  normalizeText, 
-  isAnswerCorrect, 
-  calculateXP, 
-  selectNextWord, 
-  addRandomDirection, 
-  shuffleArray 
+import {
+  normalizeText,
+  isAnswerCorrect,
+  calculateXP,
+  selectNextWord,
+  addRandomDirection,
+  shuffleArray
 } from '@/utils/vocabulary';
 import { fetchExplanation, ApiError } from '@/lib/apiClient';
 import { QuizInterface, ExplanationPanel, ErrorBoundary } from '@/components';
@@ -47,7 +47,7 @@ function LearnPortugueseApp(): React.JSX.Element {
   const { incrementTodayCount, getTodayCount, getDaysDiff, getLast14DaysHistogram } = useDailyStats();
   const { authKey, isAuthenticated } = useAuth();
   const { speak, speakPortuguese } = useSpeechSynthesis();
-  
+
   // Local component state
   const [words, setWords] = useState<Word[]>([]);
   const [currentWord, setCurrentWord] = useState<Word | PracticeWord | null>(null);
@@ -71,36 +71,36 @@ function LearnPortugueseApp(): React.JSX.Element {
   const loadVocabulary = useCallback(async () => {
     try {
       setError(null);
-      
+
       const response = await fetch(
         'https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/refs/heads/master/words/pt.json'
       );
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load vocabulary: ${response.status}`);
       }
-      
+
       const data: VocabularyApiResponse = await response.json();
-      
+
       if (!data.words || !Array.isArray(data.words)) {
         throw new Error('Invalid vocabulary data format');
       }
-      
+
       const shuffledWords = shuffleArray(data.words);
       setWords(shuffledWords);
-      
+
       // Set the first word
       const firstWord = addRandomDirection(shuffledWords[0]);
       setCurrentWord(firstWord);
       setQuestionStartTime(Date.now());
-      
+
       // Speak the first word if it's Portuguese
       if (!firstWord.isEnglishToPortuguese) {
         setTimeout(() => speakPortuguese(firstWord.targetWord), 100);
       }
-      
+
       setIsInitialized(true);
-      
+
     } catch (err) {
       console.error('Failed to load vocabulary:', err);
       setError('Failed to load vocabulary. Please refresh the page to try again.');
@@ -112,7 +112,7 @@ function LearnPortugueseApp(): React.JSX.Element {
    */
   const handleInputChange = useCallback((value: string) => {
     setUserInput(value);
-    
+
     if (!currentWord) return;
 
     const correctAnswer = currentWord.isEnglishToPortuguese
@@ -122,11 +122,11 @@ function LearnPortugueseApp(): React.JSX.Element {
     if (isAnswerCorrect(value, correctAnswer)) {
       const responseTime = Date.now() - (questionStartTime || Date.now());
       const xpGained = calculateXP(responseTime);
-      
+
       // Award XP and update stats
       addXP(xpGained);
       incrementTodayCount();
-      
+
       // Update UI state
       setResult('correct');
       setIsEditable(false);
@@ -183,11 +183,11 @@ function LearnPortugueseApp(): React.JSX.Element {
     setError(null);
 
     const nextWord = selectNextWord(words, practiceWords);
-    
+
     if (nextWord) {
       const wordWithDirection = addRandomDirection(nextWord);
       setCurrentWord(wordWithDirection);
-      
+
       // Speak Portuguese word automatically
       if (!wordWithDirection.isEnglishToPortuguese) {
         setTimeout(() => speakPortuguese(wordWithDirection.targetWord), 100);
@@ -202,11 +202,11 @@ function LearnPortugueseApp(): React.JSX.Element {
    */
   const handleSpeak = useCallback(() => {
     if (!currentWord) return;
-    
-    const textToSpeak = currentWord.isEnglishToPortuguese 
-      ? currentWord.englishWord 
+
+    const textToSpeak = currentWord.isEnglishToPortuguese
+      ? currentWord.englishWord
       : currentWord.targetWord;
-    
+
     const language = currentWord.isEnglishToPortuguese ? 'en' : 'pt';
     speak(textToSpeak, language);
   }, [currentWord, speak]);
@@ -230,13 +230,13 @@ function LearnPortugueseApp(): React.JSX.Element {
 
       setExplanation(explanationData);
       setResult('explained');
-      
+
       // Show the correct answer
       const correctAnswer = currentWord.isEnglishToPortuguese
         ? currentWord.targetWord
         : currentWord.englishWord;
       setUserInput(correctAnswer);
-      
+
       // Speak the Portuguese word
       speakPortuguese(currentWord.targetWord);
 
@@ -247,13 +247,13 @@ function LearnPortugueseApp(): React.JSX.Element {
 
     } catch (err) {
       console.error('Failed to fetch explanation:', err);
-      
+
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
         setError('Failed to load explanation. Please try again.');
       }
-      
+
       setResult('incorrect');
     } finally {
       setLoadingExplanation(false);
