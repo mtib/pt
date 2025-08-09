@@ -11,7 +11,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { VocabularyAPI, VocabularyResponse } from '@/lib/database';
+import { VOCAB_CONFIG, VocabularyAPI, VocabularyResponse } from '@/lib/database';
 import { formatSqlError } from '@/lib/database';
 
 /**
@@ -101,7 +101,7 @@ export default async function handler(
             sourcePhrase: practiceData.sourcePhrase,
             targetOptions: practiceData.targetOptions,
             direction: practiceData.direction,
-            acceptableSimilarity: 0.5 // Using the configurable constant
+            acceptableSimilarity: VOCAB_CONFIG.ACCEPTABLE_SIMILARITY
         };
 
         // Set cache headers (cache for 5 minutes to improve performance)
