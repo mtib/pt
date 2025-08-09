@@ -1,0 +1,27 @@
+{
+    "name": "Learn European Portuguese",
+    "short_name": "PT Learn",
+    "description": "An interactive app to learn European Portuguese with XP tracking, daily stats, and practice lists.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#171717",
+    "theme_color": "#171717",
+    "orientation": "portrait-primary",
+    "categories": [
+        "education",
+        "productivity"
+    ],
+    "lang": "en-US",
+    "icons": [
+        {
+            "src": "/favicon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/favicon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

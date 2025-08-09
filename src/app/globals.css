@@ -116,7 +116,51 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Mobile-specific improvements */
+  @media (max-width: 1024px) {
+    html {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+
+    input {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+
+    /* Prevent zoom on input focus on iOS */
+    input[type="text"] {
+      font-size: 16px;
+    }
+
+    /* Better button touch targets */
+    button {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Smoother scrolling */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  /* Safe area insets for devices with notches */
+  @supports (padding-top: constant(safe-area-inset-top)) {
+    .safe-area-top {
+      padding-top: constant(safe-area-inset-top);
+    }
+  }
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .safe-area-top {
+      padding-top: env(safe-area-inset-top);
+    }
   }
 }

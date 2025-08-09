@@ -16,6 +16,21 @@ export const metadata: Metadata = {
   title: "Learn European Portuguese",
   description:
     "An interactive app to learn European Portuguese with XP tracking, daily stats, and practice lists.",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PT Learn",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({

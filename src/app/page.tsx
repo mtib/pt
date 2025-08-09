@@ -303,35 +303,39 @@ function LearnPortugueseApp(): React.JSX.Element {
   }
 
   return (
-    <div className="bg-neutral-900 text-neutral-100 flex flex-row w-full h-screen">
+    <div className="bg-neutral-900 text-neutral-100 flex flex-col lg:flex-row w-full h-screen">
       {/* Main Quiz Interface */}
-      <QuizInterface
-        vocabularyXP={vocabularyXP}
-        currentWord={currentWord}
-        userInput={userInput}
-        result={result}
-        isEditable={isEditable}
-        timer={timer}
-        dailyStats={dailyStatsDisplay}
-        loadingExplanation={loadingExplanation}
-        isAuthenticated={isAuthenticated}
-        onInputChange={handleInputChange}
-        onShow={handleShow}
-        onNext={handleNext}
-        onSpeak={handleSpeak}
-        onExplain={handleExplain}
-      />
+      <div className="flex-1 flex">
+        <QuizInterface
+          vocabularyXP={vocabularyXP}
+          currentWord={currentWord}
+          userInput={userInput}
+          result={result}
+          isEditable={isEditable}
+          timer={timer}
+          dailyStats={dailyStatsDisplay}
+          loadingExplanation={loadingExplanation}
+          isAuthenticated={isAuthenticated}
+          onInputChange={handleInputChange}
+          onShow={handleShow}
+          onNext={handleNext}
+          onSpeak={handleSpeak}
+          onExplain={handleExplain}
+        />
+      </div>
 
       {/* Explanation Panel */}
-      <ExplanationPanel
-        explanation={explanation}
-        loading={loadingExplanation}
-        className="w-[800px] border-l border-neutral-700 font-mono"
-      />
+      <div className="lg:w-[800px] lg:border-l border-neutral-700 font-mono lg:h-screen lg:overflow-hidden">
+        <ExplanationPanel
+          explanation={explanation}
+          loading={loadingExplanation}
+          className="lg:border-t-0 border-t border-neutral-700 h-full"
+        />
+      </div>
 
       {/* Error Display */}
       {error && (
-        <div className="fixed top-4 right-4 max-w-md p-4 bg-red-900/90 border border-red-700 rounded-lg">
+        <div className="fixed top-4 left-4 right-4 lg:right-4 lg:left-auto lg:max-w-md p-4 bg-red-900/90 border border-red-700 rounded-lg z-50">
           <p className="text-red-100 text-sm">{error}</p>
           <button
             onClick={() => setError(null)}

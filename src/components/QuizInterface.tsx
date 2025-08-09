@@ -120,18 +120,19 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
     }, [onNext, onShow, onSpeak, onExplain, isAuthenticated]);
 
     const getInputClassName = (isActive: boolean) => `
-    bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100
-    ${isActive ? 'focus:border-neutral-400' : 'cursor-not-allowed opacity-60'}
+    bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 font-bold text-base
+    ${isActive ? 'focus:border-neutral-400' : 'cursor-not-allowed'}
   `;
 
     const getButtonClassName = (disabled: boolean = false) => `
     ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-blue-400 hover:underline cursor-pointer'}
+    text-base sm:text-sm py-1 px-1 sm:py-0 sm:px-0
   `;
 
     return (
-        <div className="flex justify-center items-center flex-grow">
-            <div className="relative">
-                <pre className="bg-neutral-800 p-4 rounded-lg shadow-lg text-sm w-full max-w-lg border border-neutral-700">
+        <div className="flex justify-center items-center flex-grow lg:min-h-0 px-2 py-4 lg:px-0 lg:py-0">
+            <div className="relative w-full max-w-lg">
+                <pre className="bg-neutral-800 p-3 sm:p-4 rounded-lg shadow-lg text-xs sm:text-sm w-full border border-neutral-700 overflow-x-auto">
                     <code>
                         {`{
   "xp": ${vocabularyXP},
@@ -212,22 +213,15 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
                             &quot;{loadingExplanation ? 'Loading...' : 'Explain'}&quot;
                         </button>
                         {`
-  ]
-}`}
+  ],
+  "nextIn": "${timer ? formatTimer(timer) : 'infinity'}"
+}
+`}
                     </code>
                 </pre>
 
-                {timer !== null && (
-                    <div
-                        className="absolute bottom-2 right-2 text-neutral-400 text-xs"
-                        aria-live="polite"
-                    >
-                        Next in {formatTimer(timer)}
-                    </div>
-                )}
-
-                {/* Keyboard shortcuts help */}
-                <div className="mt-2 text-xs text-neutral-500 text-center">
+                {/* Keyboard shortcuts help - Hidden on mobile, shown on larger screens */}
+                <div className="mt-2 text-xs text-neutral-500 text-center hidden sm:block">
                     Shortcuts: <kbd className="px-1 py-0.5 bg-neutral-700 rounded">N</kbd> Next •
                     <kbd className="px-1 py-0.5 bg-neutral-700 rounded">S</kbd> Show •
                     <kbd className="px-1 py-0.5 bg-neutral-700 rounded">Space</kbd> Speak
