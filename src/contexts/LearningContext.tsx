@@ -364,7 +364,11 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             const wordData = await DatabaseApiClient.getPracticeWord(practiceWordMetadata.id);
 
             if (!wordData) {
-                throw new Error('Practice word not found in database');
+                // Remove the word from the practice list if not found
+                setPracticeWordIds(prev => prev.filter(w => w.id !== practiceWordMetadata.id));
+                // Fall back to loading a new random word
+                await loadNewWord();
+                return;
             }
 
             // Convert database response to practice word format
