@@ -224,7 +224,7 @@ export async function importVocabularyFromPairs(
 
             for (const pair of phrasePairs) {
                 try {
-                    // Validate the word pair
+                    // Validate the phrase pair
                     // Validate pair structure
                     if (!pair.phrase1 || !pair.phrase2 ||
                         !pair.language1 || !pair.language2 ||
