@@ -177,6 +177,16 @@ export function shuffleArray<T>(array: T[]): T[] {
     return shuffled;
 }
 
+/**
+ * Filters out words where Portuguese and English are identical.
+ * 
+ * Note: This filtering is now performed server-side in the vocabulary API
+ * to reduce client-side processing and ensure consistent data quality.
+ * This function is kept for potential future use cases.
+ * 
+ * @param words - Array of words to filter
+ * @returns Filtered array without identical Portuguese-English pairs
+ */
 export function filterWords(
     words: Word[],
 ): Word[] {

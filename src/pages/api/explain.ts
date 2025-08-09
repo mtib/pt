@@ -13,6 +13,9 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
+import { promises as fs } from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import { Explanation, ApiErrorResponse } from '@/types';
 
 // Input validation schema
@@ -23,14 +26,29 @@ const RequestSchema = z.object({
 
 // OpenAI response schema for structured output
 const ExplanationSchema = z.object({
-    example: z.string().describe('Example use case with English translation'),
-    explanation: z.string().describe('Detailed explanation in English for language learners'),
-    definition: z.string().describe('Simple definition in English'),
-    grammar: z.string().describe('Grammatical information (declination, conjugation, etc.)'),
-    facts: z.string().describe('Cultural, historical, or etymological information'),
-    pronunciationIPA: z.string().describe('International Phonetic Alphabet pronunciation'),
-    pronunciationEnglish: z.string().describe('English approximation of pronunciation'),
+    example: z.string().describe('Example sentence in Portuguese with English translation in parentheses'),
+    explanation: z.string().describe('Clear explanation for beginners in 2-3 sentences about usage and meaning'),
+    definition: z.string().describe('Concise definition in 1-2 sentences'),
+    grammar: z.string().describe('Part of speech and key grammatical information (gender, conjugation pattern, etc.)'),
+    facts: z.string().describe('Brief cultural or etymological note in 1-2 sentences'),
+    pronunciationIPA: z.string().describe('IPA pronunciation notation'),
+    pronunciationEnglish: z.string().describe('English approximation using familiar sounds'),
 });
+
+// Cache configuration
+const CACHE_CONFIG = {
+    directory: path.join(process.cwd(), 'cache', 'explanations'),
+    maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days in milliseconds
+};
+
+/**
+ * Interface for cached explanation data
+ */
+interface CachedExplanation {
+    data: Explanation;
+    timestamp: number;
+    expiresAt: number;
+}
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -47,6 +65,73 @@ function validateEnvironment(): void {
 
     if (!process.env.PRESHARED_KEY) {
         throw new Error('PRESHARED_KEY environment variable is required');
+    }
+}
+
+/**
+ * Generates a cache key for a word-reference pair
+ */
+function getCacheKey(word: string, englishReference: string): string {
+    const input = `${word.toLowerCase()}-${englishReference.toLowerCase()}`;
+    return crypto.createHash('sha256').update(input).digest('hex');
+}
+
+/**
+ * Ensures the cache directory exists
+ */
+async function ensureCacheDirectory(): Promise<void> {
+    try {
+        await fs.access(CACHE_CONFIG.directory);
+    } catch {
+        await fs.mkdir(CACHE_CONFIG.directory, { recursive: true });
+    }
+}
+
+/**
+ * Gets cached explanation if it exists and is still valid
+ */
+async function getCachedExplanation(word: string, englishReference: string): Promise<Explanation | null> {
+    try {
+        const cacheKey = getCacheKey(word, englishReference);
+        const cachePath = path.join(CACHE_CONFIG.directory, `${cacheKey}.json`);
+
+        const cacheData = await fs.readFile(cachePath, 'utf-8');
+        const cached: CachedExplanation = JSON.parse(cacheData);
+
+        if (Date.now() < cached.expiresAt) {
+            console.log(`Serving cached explanation for: ${word}`);
+            return cached.data;
+        }
+
+        // Clean up expired cache file
+        await fs.unlink(cachePath).catch(() => { });
+        return null;
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * Caches an explanation
+ */
+async function cacheExplanation(word: string, englishReference: string, explanation: Explanation): Promise<void> {
+    try {
+        await ensureCacheDirectory();
+
+        const cacheKey = getCacheKey(word, englishReference);
+        const cachePath = path.join(CACHE_CONFIG.directory, `${cacheKey}.json`);
+
+        const cachedData: CachedExplanation = {
+            data: explanation,
+            timestamp: Date.now(),
+            expiresAt: Date.now() + CACHE_CONFIG.maxAge
+        };
+
+        await fs.writeFile(cachePath, JSON.stringify(cachedData, null, 2));
+        console.log(`Cached explanation for: ${word}`);
+    } catch (error) {
+        console.error('Failed to cache explanation:', error);
+        // Don't throw - caching failure shouldn't break the request
     }
 }
 
@@ -83,27 +168,41 @@ function sendErrorResponse(
 }
 
 /**
- * Creates the prompt for OpenAI based on the word and reference
+ * Creates an optimized prompt for nano models
  */
 function createPrompt(word: string, englishReference: string): string {
-    return `Provide a detailed explanation for the Portuguese word "${word}" with the English reference "${englishReference}" for an English speaker beginning to learn European Portuguese. Include the following details in a structured format:
+    return `Explain the Portuguese word "${word}" (English: "${englishReference}") for English-speaking beginners learning European Portuguese.
 
-- Example use case with English translation
-- Explanation (in English) - mention if the word is uncommon in European Portuguese, what the European Portuguese equivalent is, and any nuances in usage
-- Definition (in English)
-- Grammatical use (e.g., declination, conjugation, etc.)
-- Pronunciation (IPA and English sounds, no need to explain the sounds)
-- Other related interesting facts in English, maybe cultural or historical context as well as etymology
+REQUIRED FORMAT - Provide exactly these fields:
 
-Respond in JSON format with keys: example, explanation, definition, grammar, facts, pronunciationIPA, pronunciationEnglish.
+example: Write ONE sentence in Portuguese using "${word}" with English translation in parentheses. Format: "Portuguese sentence (English translation)"
 
-Respond in plain text without any additional formatting other than spaces and newlines.`;
+explanation: Write 2-3 clear sentences explaining how "${word}" is used, any European Portuguese specifics, and key usage notes.
+
+definition: Write a concise 1-2 sentence definition of "${word}".
+
+grammar: State the part of speech and essential grammar info (gender for nouns, conjugation type for verbs, etc.).
+
+facts: Write 1-2 sentences about etymology, cultural context, or interesting linguistic facts.
+
+pronunciationIPA: Provide IPA notation for "${word}".
+
+pronunciationEnglish: Describe pronunciation using English sounds (like "sounds like 'X' in English").
+
+Be concise but informative. Focus on practical learning.`;
 }
 
 /**
- * Generates explanation using OpenAI API
+ * Generates explanation using OpenAI API with caching
  */
 async function generateExplanation(word: string, englishReference: string): Promise<Explanation> {
+    // Check cache first
+    const cachedExplanation = await getCachedExplanation(word, englishReference);
+    if (cachedExplanation) {
+        return cachedExplanation;
+    }
+
+    // Generate new explanation
     try {
         const response = await openai.responses.parse({
             model: 'gpt-5-nano',
@@ -111,7 +210,7 @@ async function generateExplanation(word: string, englishReference: string): Prom
             input: [
                 {
                     role: 'system',
-                    content: 'You are a helpful assistant providing detailed explanations for Portuguese words to English speakers learning European Portuguese.'
+                    content: 'You are a Portuguese language expert helping English speakers learn European Portuguese. Provide clear, accurate, and beginner-friendly explanations. Be concise but informative.'
                 },
                 {
                     role: 'user',
@@ -129,11 +228,18 @@ async function generateExplanation(word: string, englishReference: string): Prom
             throw new Error('OpenAI returned no explanation data');
         }
 
-        return {
+        const fullExplanation: Explanation = {
             ...explanation,
             word,
             englishReference,
         };
+
+        // Cache the result asynchronously
+        cacheExplanation(word, englishReference, fullExplanation).catch(error => {
+            console.error('Failed to cache explanation:', error);
+        });
+
+        return fullExplanation;
     } catch (error) {
         console.error('OpenAI API Error:', error);
 

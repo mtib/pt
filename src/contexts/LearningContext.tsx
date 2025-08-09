@@ -25,8 +25,7 @@ import {
     calculateXP,
     selectNextWord,
     addRandomDirection,
-    shuffleArray,
-    filterWords
+    shuffleArray
 } from '@/utils/vocabulary';
 import { fetchExplanation, ApiError } from '@/lib/apiClient';
 
@@ -131,15 +130,13 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     });
 
     /**
-     * Loads and shuffles the vocabulary data from external source
+     * Loads and shuffles the vocabulary data from our API endpoint
      */
     const loadVocabulary = useCallback(async () => {
         try {
             setError(null);
 
-            const response = await fetch(
-                'https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/refs/heads/master/words/pt.json'
-            );
+            const response = await fetch('/api/vocabulary');
 
             if (!response.ok) {
                 throw new Error(`Failed to load vocabulary: ${response.status}`);
@@ -151,7 +148,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
                 throw new Error('Invalid vocabulary data format');
             }
 
-            const shuffledWords = shuffleArray(filterWords(data.words));
+            const shuffledWords = shuffleArray(data.words);
             setWords(shuffledWords);
 
             // Set the first word

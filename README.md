@@ -21,7 +21,14 @@ A modern, interactive web application for learning European Portuguese vocabular
 - **Detailed Word Analysis**: Get comprehensive explanations powered by OpenAI GPT-5-nano
 - **European Portuguese Focus**: Specifically tailored for European Portuguese learners
 - **Rich Context**: Includes examples, grammar, pronunciation (IPA), etymology, and cultural context
-- **Smart Caching**: Explanations are cached locally to improve performance and reduce API calls
+- **Long-Term Caching**: Explanations are cached server-side for 90 days to improve performance
+
+### 🚀 Performance & Caching
+- **Server-Side Vocabulary Caching**: Vocabulary data is cached for 30 days to reduce external API calls
+- **AI Explanation Caching**: Generated explanations are cached for 90 days to improve response times
+- **Automatic Word Filtering**: Identical Portuguese-English pairs are filtered out server-side
+- **Smart Cache Invalidation**: Automatic cache expiry and cleanup
+- **CDN-Ready**: Optimized cache headers for CDN deployment
 
 ### 🎨 User Experience
 - **Dark Theme**: Easy on the eyes with a modern dark interface
@@ -178,28 +185,84 @@ npm start
 ```
 
 ### Docker Deployment
+
+The application includes server-side caching for both vocabulary data (30 days) and AI explanations (90 days). For production deployments, you should mount the cache directory as a volume to persist cache across container restarts.
+
+#### Basic Docker Deployment
 ```bash
 # Build the Docker image
 docker build -t pt-learn .
 
-# Run the container
+# Run the container with cache volume mounting
 docker run -d \
   --name pt-learn \
   -p 3000:3000 \
   --env-file .env \
+  -v $(pwd)/cache:/app/cache \
   --restart unless-stopped \
   pt-learn
 ```
 
-Or use the one from GitHub Container Registry:
+#### Docker Compose Deployment
+Create a `docker-compose.yml` file:
 
+```yaml
+version: '3.8'
+services:
+  pt-learn:
+    image: ghcr.io/mtib/pt:latest
+    # Or build from source:
+    # build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PRESHARED_KEY=${PRESHARED_KEY}
+    volumes:
+      - ./cache:/app/cache
+      - ./logs:/app/logs  # Optional: for application logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+Then run:
 ```bash
-docker pull ghcr.io/mtib/pt:latest
-docker run -p 3000:3000 \
+docker-compose up -d
+```
+
+#### Using GitHub Container Registry
+```bash
+# Run with persistent cache
+docker run -d \
+  --name pt-learn \
+  -p 3000:3000 \
   -e OPENAI_API_KEY=your-key \
   -e PRESHARED_KEY=your-auth-key \
+  -v /host/path/to/cache:/app/cache \
+  --restart unless-stopped \
   ghcr.io/mtib/pt:latest
 ```
+
+#### Cache Directory Structure
+When properly mounted, your cache directory will contain:
+```
+cache/
+├── vocabulary.json          # Cached vocabulary data (30-day TTL)
+└── explanations/           # AI explanation cache (90-day TTL)
+    ├── [hash1].json
+    ├── [hash2].json
+    └── ...
+```
+
+#### Production Considerations
+- **Cache Persistence**: Always mount `/app/cache` as a volume in production
+- **Cache Size**: The explanation cache can grow over time. Monitor disk usage
+- **Backup**: Consider backing up the cache directory for faster cold starts
+- **Permissions**: Ensure the cache directory is writable by the container user
 
 ### Vercel Deployment
 The application is optimized for deployment on Vercel:
@@ -231,6 +294,34 @@ The application includes built-in error handling and validation:
 - **Bundle Optimization**: Optimized production builds
 
 ## 📚 API Reference
+
+### `/api/vocabulary`
+Serves filtered and cached Portuguese vocabulary data.
+
+#### Request
+```bash
+GET /api/vocabulary
+```
+
+#### Response
+```typescript
+{
+  "words": [
+    {
+      "rank": 1,
+      "targetWord": "casa",
+      "englishWord": "house"
+    },
+    // ... more words
+  ]
+}
+```
+
+#### Features
+- **Server-side filtering**: Removes identical Portuguese-English pairs
+- **30-day cache**: Reduces external API calls
+- **Automatic validation**: Ensures data quality
+- **CDN optimization**: Proper cache headers for edge caching
 
 ### `/api/explain`
 Generates detailed explanations for Portuguese words.
