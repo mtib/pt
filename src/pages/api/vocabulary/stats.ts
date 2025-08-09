@@ -63,10 +63,6 @@ export default async function handler(
 
         // Get database statistics
         const dbStats = await VocabularyAPI.getStats();
-        const db = getDatabase();
-
-        // Get database file size
-        const databaseSize = await db.getFormattedDatabaseSize();
 
         // Prepare response data
         const responseData: StatsResponse = {
@@ -77,13 +73,14 @@ export default async function handler(
                 pt: dbStats.portuguese_phrases
             },
             averageSimilarity: Math.round(dbStats.avg_similarity * 1000) / 1000, // Round to 3 decimal places
-            databaseSize,
             lastUpdated: new Date().toISOString()
         };
 
         // Set cache headers (cache for 15 minutes as stats don't change frequently)
         res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900');
         res.setHeader('ETag', `"stats-${Date.now()}"`);
+
+        console.log("what!?");
 
         res.status(200).json({
             success: true,

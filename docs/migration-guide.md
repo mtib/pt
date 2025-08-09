@@ -145,15 +145,6 @@ export const VOCAB_CONFIG = {
 };
 ```
 
-### Environment Variables
-```bash
-# Optional: External database URL for production
-VOCABULARY_DATABASE_URL=sqlite:./cache/vocabulary.db
-
-# Import source configuration
-VOCABULARY_IMPORT_SOURCE=https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/refs/heads/master/words/pt.json
-```
-
 ## Testing Strategy
 
 ### Unit Tests

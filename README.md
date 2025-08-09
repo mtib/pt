@@ -84,7 +84,8 @@ The application uses SQLite for vocabulary management. To populate the database:
 1. **Set the import authentication key**
    ```bash
    # Add to your .env.local file
-   IMPORT_AUTH_KEY=your_secure_import_key_here
+   # Note: PRESHARED_KEY is used for both app auth and import operations
+   PRESHARED_KEY=your_secure_import_key_here
    ```
 
 2. **Run the migration script**

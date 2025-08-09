@@ -54,9 +54,6 @@ export const VOCAB_CONFIG = {
 
     /** Supported language codes */
     SUPPORTED_LANGUAGES: ['en', 'pt'] as const,
-
-    /** External vocabulary source URL */
-    EXTERNAL_SOURCE_URL: 'https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/refs/heads/master/words/pt.json',
 } as const;
 
 /**
@@ -257,7 +254,6 @@ export interface StatsResponse {
         [languageCode: string]: number;
     };
     averageSimilarity: number;
-    databaseSize: string;
     lastUpdated?: string;
 }
 

@@ -64,7 +64,7 @@ function validateRequestBody(body: unknown): body is ImportRequest {
         if (!item || typeof item !== 'object') {
             return false;
         }
-        
+
         const pair = item as Record<string, unknown>;
         if (typeof pair.phrase1 !== 'string' || typeof pair.phrase2 !== 'string' ||
             typeof pair.language1 !== 'string' || typeof pair.language2 !== 'string' ||
@@ -124,7 +124,7 @@ export default async function handler(
         const { data: phrasePairs, overwrite = false, authKey } = body;
 
         // Authenticate the request
-        const expectedAuthKey = process.env.IMPORT_AUTH_KEY;
+        const expectedAuthKey = process.env.PRESHARED_KEY;
         if (!expectedAuthKey) {
             res.status(500).json({
                 success: false,

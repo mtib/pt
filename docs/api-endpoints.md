@@ -12,7 +12,7 @@ All API endpoints are located under `/api/` and return JSON responses.
 
 **Purpose**: Import phrase pairs into the vocabulary database (admin only)
 
-**Authentication**: Requires `IMPORT_AUTH_KEY`
+**Authentication**: Requires `PRESHARED_KEY`
 
 **Request Body**:
 ```json
@@ -252,7 +252,6 @@ Returns database statistics and health information.
       [languageCode: string]: number;
     };
     averageSimilarity: number;
-    databaseSize: string; // Human-readable size
     lastUpdated?: string; // ISO timestamp
   };
 }

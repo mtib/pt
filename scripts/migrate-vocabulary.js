@@ -22,7 +22,7 @@ const { promises: fs } = require('fs');
 const path = require('path');
 
 // Configuration
-const EXTERNAL_SOURCE_URL = 'https://raw.githubusercontent.com/mtib/portuguese-common-words/refs/heads/main/words.json';
+const EXTERNAL_SOURCE_URL = 'https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/refs/heads/master/words/pt.json';
 const IMPORT_API_URL = 'http://localhost:3000/api/vocabulary/import';
 
 async function main() {
@@ -41,9 +41,9 @@ async function main() {
     }
 
     // Check for required environment variables
-    const authKey = process.env.IMPORT_AUTH_KEY;
+    const authKey = process.env.PRESHARED_KEY;
     if (!authKey && !dryRun) {
-        console.error('❌ IMPORT_AUTH_KEY environment variable is required');
+        console.error('❌ PRESHARED_KEY environment variable is required');
         console.error('   Set it in your .env.local file or environment');
         process.exit(1);
     }

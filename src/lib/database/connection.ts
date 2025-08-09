@@ -69,6 +69,8 @@ class DatabaseManager {
             // Create database connection
             await this.createConnection();
 
+            console.log("Database connection established");
+
             // Initialize database schema
             await this.initializeSchema();
 
@@ -110,36 +112,10 @@ class DatabaseManager {
                     }
 
                     console.log(`Connected to SQLite database: ${DB_CONFIG.DB_PATH}`);
-                    this.configureConnection().then(resolve).catch(reject);
+                    resolve();
                 }
             );
         });
-    }
-
-    /**
-     * Configure database connection settings
-     */
-    private async configureConnection(): Promise<void> {
-        if (!this.db) {
-            throw new Error('Database connection not established');
-        }
-
-        const promises: Promise<void>[] = [];
-
-        // Enable foreign key constraints
-        if (DB_CONFIG.ENABLE_FOREIGN_KEYS) {
-            promises.push(this.runQuery('PRAGMA foreign_keys = ON'));
-        }
-
-        // Enable WAL mode for better concurrent access
-        if (DB_CONFIG.ENABLE_WAL_MODE) {
-            promises.push(this.runQuery('PRAGMA journal_mode = WAL'));
-        }
-
-        // Set connection timeout
-        promises.push(this.runQuery(`PRAGMA busy_timeout = ${DB_CONFIG.CONNECTION_TIMEOUT}`));
-
-        await Promise.all(promises);
     }
 
     /**
@@ -150,14 +126,22 @@ class DatabaseManager {
             throw new Error('Database connection not established');
         }
 
+        console.log("Creating tables");
+
         // Create tables
+        console.log("- phrases");
         await this.runQuery(SQL_QUERIES.CREATE_PHRASES_TABLE);
+        console.log("- similarity");
         await this.runQuery(SQL_QUERIES.CREATE_SIMILARITY_TABLE);
+
+        console.log("Tables created");
 
         // Create indexes
         for (const indexQuery of SQL_QUERIES.CREATE_INDEXES) {
             await this.runQuery(indexQuery);
         }
+
+        console.log("Indices created");
 
         console.log('Database schema initialized');
     }
@@ -294,33 +278,6 @@ class DatabaseManager {
             await this.rollbackTransaction();
             throw error;
         }
-    }
-
-    /**
-     * Get database file size in bytes
-     */
-    public async getDatabaseSize(): Promise<number> {
-        try {
-            const stats = await fs.stat(DB_CONFIG.DB_PATH);
-            return stats.size;
-        } catch {
-            return 0;
-        }
-    }
-
-    /**
-     * Format database size as human-readable string
-     */
-    public async getFormattedDatabaseSize(): Promise<string> {
-        const bytes = await this.getDatabaseSize();
-
-        if (bytes === 0) return '0 B';
-
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
     /**

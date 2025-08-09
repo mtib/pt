@@ -48,7 +48,6 @@ export interface DatabaseStatsResponse {
         [languageCode: string]: number;
     };
     averageSimilarity: number;
-    databaseSize: string;
     lastUpdated?: string;
 }
 

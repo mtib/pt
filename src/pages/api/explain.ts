@@ -215,7 +215,7 @@ async function generateExplanationForPhrase(phraseId: number): Promise<Explanati
 
     // Initialize database and get phrase data
     await VocabularyAPI.init();
-    
+
     // Get the target phrase data
     const practiceData = await VocabularyAPI.getPracticeWord(phraseId);
     if (!practiceData) {
@@ -223,7 +223,7 @@ async function generateExplanationForPhrase(phraseId: number): Promise<Explanati
     }
 
     const { sourcePhrase, targetOptions } = practiceData;
-    
+
     // Separate synonyms (same language) from alternatives (different language)
     const synonyms = targetOptions.filter(option => option.language === sourcePhrase.language);
     const alternatives = targetOptions.filter(option => option.language !== sourcePhrase.language);

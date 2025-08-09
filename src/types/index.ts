@@ -120,7 +120,7 @@ export const STORAGE_KEYS = {
     // Database system keys
     AUTH_KEY: 'auth_key',
     USER_PREFERENCES: 'user_preferences',
-    
+
     // Practice tracking (local)
     VOCABULARY_XP: 'vocabularyXP',
     PRACTICE_WORDS: 'practiceWords',
