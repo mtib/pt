@@ -1,152 +1,45 @@
 /**
- * API route for serving cached Portuguese vocabulary.
+ * API route for serving Portuguese vocabulary (Database System Only).
  * 
- * This endpoint fetches and caches vocabulary data from the external source
- * to improve performance and reduce external API calls.
+ * This endpoint serves vocabulary data from the new SQLite database system.
+ * It provides guidance to use the new specific API endpoints for better functionality.
  * 
  * @author Portuguese Learning App
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { promises as fs } from 'fs';
-import path from 'path';
-import { Word } from '@/types';
+import { VocabularyAPI } from '@/lib/database';
 
 /**
- * Interface for the external vocabulary API response
+ * Database-based vocabulary response
  */
-interface VocabularyApiResponse {
-    words: Word[];
-}
-
-/**
- * Cache configuration
- */
-const CACHE_CONFIG = {
-    filePath: path.join(process.cwd(), 'cache', 'vocabulary.json'),
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-    externalUrl: 'https://raw.githubusercontent.com/SMenigat/thousand-most-common-words/refs/heads/master/words/pt.json'
-};
-
-/**
- * Filters out words where Portuguese and English are identical
- * This prevents showing unhelpful word pairs like "I" -> "I"
- */
-function filterWords(words: Word[]): Word[] {
-    return words.filter(word =>
-        word.targetWord !== word.englishWord &&
-        word.targetWord.trim().length > 0 &&
-        word.englishWord.trim().length > 0
-    );
-}
-
-/**
- * Interface for cached vocabulary data
- */
-interface CachedVocabulary {
-    data: VocabularyApiResponse;
-    timestamp: number;
-    expiresAt: number;
-}
-
-/**
- * Ensures the cache directory exists
- */
-async function ensureCacheDirectory(): Promise<void> {
-    const cacheDir = path.dirname(CACHE_CONFIG.filePath);
-    try {
-        await fs.access(cacheDir);
-    } catch {
-        await fs.mkdir(cacheDir, { recursive: true });
-    }
-}
-
-/**
- * Checks if cached data exists and is still valid
- */
-async function getCachedVocabulary(): Promise<VocabularyApiResponse | null> {
-    try {
-        const cacheData = await fs.readFile(CACHE_CONFIG.filePath, 'utf-8');
-        const cached: CachedVocabulary = JSON.parse(cacheData);
-
-        if (Date.now() < cached.expiresAt) {
-            console.log('Serving vocabulary from cache');
-            return cached.data;
-        }
-
-        console.log('Cache expired, will fetch fresh data');
-        return null;
-    } catch (error) {
-        console.log('No valid cache found, will fetch fresh data');
-        return null;
-    }
-}
-
-/**
- * Fetches vocabulary from external source and caches it
- */
-async function fetchAndCacheVocabulary(): Promise<VocabularyApiResponse> {
-    console.log('Fetching vocabulary from external source...');
-
-    const response = await fetch(CACHE_CONFIG.externalUrl, {
-        headers: {
-            'User-Agent': 'Portuguese-Learning-App/1.0.0'
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error(`Failed to fetch vocabulary: ${response.status} ${response.statusText}`);
-    }
-
-    const data: VocabularyApiResponse = await response.json();
-
-    if (!data.words || !Array.isArray(data.words)) {
-        throw new Error('Invalid vocabulary data format received from external source');
-    }
-
-    // Validate and filter the data
-    const validWords = data.words.filter(word =>
-        word &&
-        typeof word.englishWord === 'string' &&
-        typeof word.targetWord === 'string' &&
-        word.englishWord.length > 0 &&
-        word.targetWord.length > 0
-    );
-
-    if (validWords.length === 0) {
-        throw new Error('No valid words found in vocabulary data');
-    }
-
-    // Filter out words where Portuguese and English are identical
-    const filteredWords = filterWords(validWords);
-
-    if (filteredWords.length === 0) {
-        throw new Error('No usable words found after filtering');
-    }
-
-    const vocabularyData: VocabularyApiResponse = { words: filteredWords };
-
-    // Cache the data
-    await ensureCacheDirectory();
-    const cachedData: CachedVocabulary = {
-        data: vocabularyData,
-        timestamp: Date.now(),
-        expiresAt: Date.now() + CACHE_CONFIG.maxAge
+interface DatabaseVocabularyResponse {
+    words: never[]; // Empty array to encourage using new endpoints
+    source: 'database';
+    totalPhrases: number;
+    message: string;
+    newEndpoints: {
+        random: string;
+        practice: string;
+        stats: string;
+        import: string;
     };
-
-    await fs.writeFile(CACHE_CONFIG.filePath, JSON.stringify(cachedData, null, 2));
-    console.log(`Cached ${filteredWords.length} filtered vocabulary words`);
-
-    return vocabularyData;
 }
+
+interface ErrorResponse {
+    error: string;
+    details?: string;
+}
+
+type ApiResponse = DatabaseVocabularyResponse | ErrorResponse;
 
 /**
  * Main API handler for vocabulary data
  */
 export default async function handler(
     req: NextApiRequest,
-    res: NextApiResponse<VocabularyApiResponse | { error: string; }>
+    res: NextApiResponse<ApiResponse>
 ): Promise<void> {
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -161,32 +54,68 @@ export default async function handler(
 
     // Only allow GET requests
     if (req.method !== 'GET') {
-        res.status(405).json({ error: 'Method not allowed. Only GET requests are supported.' });
+        res.status(405).json({
+            error: 'Method not allowed. Only GET requests are supported.'
+        });
         return;
     }
 
     try {
-        // Try to get cached data first
-        let vocabularyData = await getCachedVocabulary();
+        // Initialize database if needed
+        await VocabularyAPI.init();
 
-        // If no valid cache, fetch fresh data
-        if (!vocabularyData) {
-            vocabularyData = await fetchAndCacheVocabulary();
+        // Check if database is healthy and has data
+        const isHealthy = await VocabularyAPI.healthCheck();
+        if (!isHealthy) {
+            res.status(503).json({
+                error: 'Database unavailable',
+                details: 'The vocabulary database could not be accessed. Please run the migration script first.'
+            });
+            return;
         }
 
-        // Set cache headers for client-side caching (longer cache due to server-side filtering)
-        res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800'); // 1 day cache, 1 week stale
-        res.setHeader('CDN-Cache-Control', 'public, s-maxage=86400');
+        // Get database statistics
+        const stats = await VocabularyAPI.getStats();
 
-        res.status(200).json(vocabularyData);
+        if (stats.total_phrases === 0) {
+            res.status(503).json({
+                error: 'Database empty',
+                details: 'The vocabulary database is empty. Please run the migration script to import data.'
+            });
+            return;
+        }
+
+        // Return response directing to use new endpoints
+        const response: DatabaseVocabularyResponse = {
+            words: [],
+            source: 'database',
+            totalPhrases: stats.total_phrases,
+            message: 'This application now uses a database-backed vocabulary system. Please use the specific API endpoints for better functionality.',
+            newEndpoints: {
+                random: '/api/vocabulary/random',
+                practice: '/api/vocabulary/practice/{phraseId}',
+                stats: '/api/vocabulary/stats',
+                import: '/api/vocabulary/import'
+            }
+        };
+
+        // Set cache headers (cache for a short time since this is just informational)
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
+
+        res.status(200).json(response);
 
     } catch (error) {
         console.error('Vocabulary API Error:', error);
 
         const errorMessage = error instanceof Error
             ? error.message
-            : 'Failed to load vocabulary data';
+            : 'Failed to access vocabulary database';
 
-        res.status(500).json({ error: errorMessage });
+        res.status(500).json({
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development'
+                ? (error instanceof Error ? error.stack : String(error))
+                : undefined
+        });
     }
 }

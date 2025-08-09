@@ -1,14 +1,14 @@
 /**
- * Utility functions for the Portuguese learning application.
+ * Utility functions for the Portuguese learning application (Database System).
  * 
  * This file contains pure functions that perform common operations
- * such as text normalization, XP calculation, and word selection logic.
+ * such as text normalization, XP calculation, and database practice word management.
  * 
  * @author Portuguese Learning App
- * @version 1.0.0
+ * @version 2.0.0
  */
 
-import { Word, PracticeWord, CONFIG } from '@/types';
+import { CONFIG } from '@/types';
 
 /**
  * Normalizes text by removing accents, spaces, and converting to lowercase
@@ -26,7 +26,7 @@ import { Word, PracticeWord, CONFIG } from '@/types';
 export function normalizeText(str: string): string {
     return str
         .normalize('NFD') // Decompose accents
-        .replace(/['’-]/g, '') // Remove apostrophes and similar characters
+        .replace(/[''-]/g, '') // Remove apostrophes and similar characters
         .replace(/\p{Diacritic}/gu, '') // Remove accents
         .replace(/\s+/g, '') // Remove spaces
         .toLowerCase();
@@ -79,95 +79,6 @@ export function isAnswerCorrect(userInput: string, correctAnswer: string): boole
 }
 
 /**
- * Determines the practice probability based on the number of words in practice list.
- * More words in practice = higher chance of showing practice words.
- * 
- * @param practiceWordsCount - Number of words in the practice list
- * @returns Probability between 0 and 1
- * 
- * @example
- * ```typescript
- * getPracticeChance(0) // returns 0.3 (30% base chance)
- * getPracticeChance(10) // returns 0.65 (65% chance)
- * getPracticeChance(20) // returns 1.0 (100% chance)
- * ```
- */
-export function getPracticeChance(practiceWordsCount: number): number {
-    const { BASE_PRACTICE_CHANCE, PRACTICE_CHANCE_MULTIPLIER, PRACTICE_CHANCE_DIVISOR } = CONFIG;
-
-    return Math.min(
-        BASE_PRACTICE_CHANCE + (practiceWordsCount / PRACTICE_CHANCE_DIVISOR) * PRACTICE_CHANCE_MULTIPLIER,
-        1
-    );
-}
-
-/**
- * Selects the next word to display, either from practice list or available words.
- * Uses weighted random selection based on practice probability.
- * 
- * @param words - All available words
- * @param practiceWords - Words that need more practice
- * @returns Next word to display or null if no words available
- * 
- * @example
- * ```typescript
- * const nextWord = selectNextWord(allWords, practiceWords);
- * if (nextWord) {
- *   console.log(`Show word: ${nextWord.targetWord}`);
- * }
- * ```
- */
-export function selectNextWord(
-    words: Word[],
-    practiceWords: PracticeWord[]
-): (Word | PracticeWord) | null {
-    const practiceChance = getPracticeChance(practiceWords.length);
-    const shouldUsePracticeWord = practiceWords.length > 0 && Math.random() < practiceChance;
-
-    if (shouldUsePracticeWord) {
-        // Select random practice word (already has direction set)
-        return practiceWords[Math.floor(Math.random() * practiceWords.length)];
-    } else {
-        // Select random word not in practice list (any direction that's not being practiced)
-        const availableWords = words.filter(word => {
-            const ptToEnInPractice = practiceWords.some(pWord =>
-                pWord.rank === word.rank && !pWord.isEnglishToPortuguese
-            );
-            const enToPtInPractice = practiceWords.some(pWord =>
-                pWord.rank === word.rank && pWord.isEnglishToPortuguese
-            );
-            // If both directions are in practice, don't include this word in available words
-            return !(ptToEnInPractice && enToPtInPractice);
-        });
-
-        if (availableWords.length === 0) return null;
-
-        return availableWords[Math.floor(Math.random() * availableWords.length)];
-    }
-}
-
-/**
- * Adds random direction (English to Portuguese or vice versa) to a word.
- * If the word is already a PracticeWord with a direction set, returns it unchanged.
- * 
- * @param word - Word to add direction to
- * @param forceDirection - Optional direction to force
- * @returns Word with direction property set
- */
-export function addRandomDirection(
-    word: Word | PracticeWord,
-    forceDirection?: boolean
-): Word | PracticeWord {
-    // If it's a PracticeWord, it already has a direction set
-    if ('correctCount' in word && word.isEnglishToPortuguese !== undefined) {
-        return word;
-    }
-
-    const isEnglishToPortuguese = forceDirection ?? Math.random() < 0.5;
-    return { ...word, isEnglishToPortuguese };
-}
-
-/**
  * Shuffles an array using Fisher-Yates algorithm.
  * 
  * @param array - Array to shuffle
@@ -188,24 +99,6 @@ export function shuffleArray<T>(array: T[]): T[] {
     }
 
     return shuffled;
-}
-
-/**
- * Filters out words where Portuguese and English are identical.
- * 
- * Note: This filtering is now performed server-side in the vocabulary API
- * to reduce client-side processing and ensure consistent data quality.
- * This function is kept for potential future use cases.
- * 
- * @param words - Array of words to filter
- * @returns Filtered array without identical Portuguese-English pairs
- */
-export function filterWords(
-    words: Word[],
-): Word[] {
-    return words.filter(it => {
-        return !(it.targetWord == it.englishWord);
-    });
 }
 
 /**
@@ -256,3 +149,44 @@ export function createSafeErrorMessage(error: unknown): string {
 
     return 'Something went wrong. Please try again.';
 }
+
+// ============================================================================
+// DATABASE SYSTEM UTILITIES
+// ============================================================================
+
+/**
+ * Determines the practice probability based on the number of words in practice list.
+ * More words in practice = higher chance of showing practice words.
+ * 
+ * @param practiceWordsCount - Number of words in the practice list
+ * @returns Probability between 0 and 1
+ * 
+ * @example
+ * ```typescript
+ * getDatabasePracticeChance(0) // returns 0.3 (30% base chance)
+ * getDatabasePracticeChance(10) // returns 0.65 (65% chance)
+ * getDatabasePracticeChance(20) // returns 1.0 (100% chance)
+ * ```
+ */
+export function getDatabasePracticeChance(practiceWordsCount: number): number {
+    const { BASE_PRACTICE_CHANCE, PRACTICE_CHANCE_MULTIPLIER, PRACTICE_CHANCE_DIVISOR } = CONFIG;
+
+    return Math.min(
+        BASE_PRACTICE_CHANCE + (practiceWordsCount / PRACTICE_CHANCE_DIVISOR) * PRACTICE_CHANCE_MULTIPLIER,
+        1
+    );
+}
+
+/**
+ * Database system practice management
+ * 
+ * The new database system handles all practice word tracking through the API endpoints.
+ * Practice statistics are maintained in the LearningContext and synchronized with the database.
+ * 
+ * Legacy local storage functions have been removed in favor of API-based management.
+ * All database operations should go through:
+ * - /api/vocabulary/random - Get random word
+ * - /api/vocabulary/practice/[id] - Get specific practice word  
+ * - /api/vocabulary/validate - Submit practice results
+ * - /api/vocabulary/stats - Get practice statistics
+ */

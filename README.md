@@ -1,34 +1,37 @@
 # Learn European Portuguese
 
-A modern, interactive web application for learning European Portuguese vocabulary. Built with Next.js 15, React 19, and TypeScript, this app provides an engaging learning experience with features like XP tracking, daily statistics, speech synthesis, and AI-powered explanations.
+A modern, interactive web application for learning European Portuguese vocabulary. Built with Next.js 15, React 19, TypeScript, and SQLite, this app provides an engaging learning experience with features like XP tracking, daily statistics, speech synthesis, and AI-powered explanations.
 
 ## ✨ Features
 
 ### 🎯 Core Learning
 - **Interactive Quiz System**: Practice vocabulary with bidirectional translation (Portuguese ↔ English)
+- **Database-Powered**: SQLite database with phrase relationships and similarity scoring
 - **XP System**: Earn experience points based on response speed (1-10 XP per correct answer)
 - **Smart Practice Algorithm**: Words you struggle with are added to a practice list for reinforcement
 - **Speech Synthesis**: Hear Portuguese words pronounced with European Portuguese accent
-- **Progress Tracking**: Remove words from practice after 3 correct attempts
+- **Server-Side Validation**: Answer checking with phrase similarity matching
 
 ### 📊 Analytics & Progress
+- **Database Statistics**: Real-time statistics from the vocabulary database
 - **Daily Statistics**: Track your daily learning progress
 - **Visual Progress Chart**: 14-day histogram showing your consistency
 - **Achievement System**: Monitor improvement with XP tracking
-- **Local Storage**: All progress is saved locally in your browser
+- **Phrase Relationships**: Learn synonyms and alternative translations
 
 ### 🤖 AI-Powered Explanations
-- **Detailed Word Analysis**: Get comprehensive explanations powered by OpenAI GPT-5-nano
+- **Detailed Phrase Analysis**: Get comprehensive explanations powered by OpenAI GPT-5-nano
+- **Contextual Understanding**: Includes synonyms and alternative translations from the database
 - **European Portuguese Focus**: Specifically tailored for European Portuguese learners
 - **Rich Context**: Includes examples, grammar, pronunciation (IPA), etymology, and cultural context
 - **Long-Term Caching**: Explanations are cached server-side for 90 days to improve performance
 
-### 🚀 Performance & Caching
-- **Server-Side Vocabulary Caching**: Vocabulary data is cached for 30 days to reduce external API calls
-- **AI Explanation Caching**: Generated explanations are cached for 90 days to improve response times
-- **Automatic Word Filtering**: Identical Portuguese-English pairs are filtered out server-side
-- **Smart Cache Invalidation**: Automatic cache expiry and cleanup
-- **CDN-Ready**: Optimized cache headers for CDN deployment
+### 🚀 Performance & Database
+- **SQLite Database**: Fast, reliable local database with phrase relationships
+- **Secured Import API**: Protected vocabulary import with authentication
+- **Phrase Similarity Scoring**: Intelligent phrase relationship mapping
+- **Server-Side Processing**: Answer validation and explanation generation
+- **Automatic Cache Management**: Smart caching for explanations and API responses
 
 ### 🎨 User Experience
 - **Dark Theme**: Easy on the eyes with a modern dark interface
@@ -73,6 +76,35 @@ A modern, interactive web application for learning European Portuguese vocabular
    # or
    yarn dev
    ```
+
+### 🗄️ Database Setup
+
+The application uses SQLite for vocabulary management. To populate the database:
+
+1. **Set the import authentication key**
+   ```bash
+   # Add to your .env.local file
+   # Note: PRESHARED_KEY is used for both app auth and import operations
+   PRESHARED_KEY=your_secure_import_key_here
+   ```
+
+2. **Run the migration script**
+   ```bash
+   # Dry run to see what will be imported
+   node scripts/migrate-vocabulary.js --dry-run
+   
+   # Import vocabulary data (server must be running)
+   node scripts/migrate-vocabulary.js
+   
+   # Or overwrite existing data
+   node scripts/migrate-vocabulary.js --overwrite
+   ```
+
+   **Note**: The Next.js development server must be running (`npm run dev`) before running the migration script.
+
+3. **Verify the import**
+   
+   Check the database statistics at: [http://localhost:3000/api/vocabulary/stats](http://localhost:3000/api/vocabulary/stats)
 
 5. **Open your browser**
    
