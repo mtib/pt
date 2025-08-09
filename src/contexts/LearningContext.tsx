@@ -227,9 +227,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         speakPortuguese(currentWord.targetWord);
 
         // Add to practice list if not already there
-        if (!('correctCount' in currentWord)) {
-            addToPractice(currentWord);
-        }
+        addToPractice(currentWord);
     }, [currentWord, speakPortuguese, startTimer, addToPractice]);
 
     /**
@@ -303,10 +301,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             speakPortuguese(currentWord.targetWord);
 
             // Add to practice list if not already there
-            if (!('correctCount' in currentWord)) {
-                addToPractice(currentWord);
-            }
-
+            addToPractice(currentWord);
         } catch (err) {
             console.error('Failed to fetch explanation:', err);
 
