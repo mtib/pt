@@ -95,13 +95,13 @@ export const QuizInterface: React.FC = () => {
 
     const getButtonClassName = (disabled: boolean = false) => `
     ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-blue-400 hover:underline cursor-pointer'}
-    text-base sm:text-sm py-1 px-1 sm:py-0 sm:px-0
+    text-base text-sm py-0 px-0
   `;
 
     return (
-        <div className="flex justify-center items-center flex-grow lg:min-h-0 px-2 py-4 lg:px-0 lg:py-0">
-            <div className="relative w-full max-w-lg">
-                <pre className="bg-neutral-800 p-3 sm:p-4 rounded-lg shadow-lg text-xs sm:text-sm w-full border border-neutral-700 overflow-x-auto">
+        <div className="flex justify-center items-center flex-grow">
+            <div className="relative lg:px-2">
+                <pre className="lg:bg-neutral-800 p-3 lg:rounded-lg lg:shadow-lg lg:border border-neutral-700 overflow-x-hidden">
                     <code>
                         {`{
   "xp": ${vocabularyXP},
@@ -190,7 +190,7 @@ export const QuizInterface: React.FC = () => {
                 </pre>
 
                 {/* Keyboard shortcuts help - Hidden on mobile, shown on larger screens */}
-                <div className="mt-2 text-xs text-neutral-500 text-center hidden sm:block">
+                <div className="mt-2 text-xs text-neutral-500 lg:block hidden">
                     Shortcuts: <kbd className="px-1 py-0.5 bg-neutral-700 rounded">N</kbd> Next •
                     <kbd className="px-1 py-0.5 bg-neutral-700 rounded">S</kbd> Show •
                     <kbd className="px-1 py-0.5 bg-neutral-700 rounded">Space</kbd> Speak

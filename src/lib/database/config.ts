@@ -117,6 +117,22 @@ export const SQL_QUERIES = {
         LIMIT 1
     `,
 
+    /** Get a random phrase by language, ensuring it has a translation */
+    GET_RANDOM_PHRASE_WITH_TRANSLATION: `
+        SELECT p.id, p.phrase, p.language, p.relative_frequency
+        FROM phrases p
+        WHERE 
+            p.language = ? AND
+            EXISTS (
+                SELECT 1
+                FROM similarity s
+                JOIN phrases p2 ON s.to_phrase_id = p2.id
+                WHERE s.from_phrase_id = p.id AND p.language != p2.language
+            )
+        ORDER BY RANDOM()
+        LIMIT 1
+    `,
+
     /** Get translations for a phrase */
     GET_TRANSLATIONS: `
         SELECT 
@@ -169,6 +185,33 @@ export const SQL_QUERIES = {
     /** Delete all data (for import with overwrite) */
     DELETE_ALL_SIMILARITY: 'DELETE FROM similarity',
     DELETE_ALL_PHRASES: 'DELETE FROM phrases',
+
+    /** Delete a phrase by its ID */
+    DELETE_PHRASE_BY_ID: 'DELETE FROM phrases WHERE id = ?',
+
+    /** Get all distinct categories */
+    GET_ALL_CATEGORIES: 'SELECT DISTINCT category FROM phrases WHERE category IS NOT NULL ORDER BY category',
+
+    /** Search for phrases (fuzzy) */
+    SEARCH_PHRASES: `
+        SELECT id, phrase, language, category 
+        FROM phrases 
+        WHERE phrase LIKE ? 
+        LIMIT 100
+    `,
+
+    /** Get orphan phrases (phrases with no translations) */
+    GET_ORPHAN_PHRASES: `
+        SELECT p.id, p.phrase, p.language, p.category
+        FROM phrases p
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM similarity s
+            JOIN phrases p2 ON s.to_phrase_id = p2.id
+            WHERE s.from_phrase_id = p.id AND p.language != p2.language
+        )
+        ORDER BY p.language, p.phrase
+    `,
 } as const;
 
 /**

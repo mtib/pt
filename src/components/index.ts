@@ -12,3 +12,4 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { LoadingSpinner } from './LoadingSpinner';
 export { QuizInterface } from './QuizInterface';
 export { ExplanationPanel } from './ExplanationPanel';
+export { default as AuthGuard } from './AuthGuard';
