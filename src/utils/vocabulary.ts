@@ -26,6 +26,7 @@ import { Word, PracticeWord, CONFIG } from '@/types';
 export function normalizeText(str: string): string {
     return str
         .normalize('NFD') // Decompose accents
+        .replace(/['’-]/g, '') // Remove apostrophes and similar characters
         .replace(/\p{Diacritic}/gu, '') // Remove accents
         .replace(/\s+/g, '') // Remove spaces
         .toLowerCase();
