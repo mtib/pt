@@ -9,8 +9,9 @@
  */
 
 import React from 'react';
-import { LoadingSpinner } from './LoadingSpinner';
 import { useLearningContext } from '@/contexts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface ExplanationPanelProps {
     /** Additional CSS classes */
@@ -24,147 +25,107 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({
     className = '',
 }) => {
     const { explanation, loadingExplanation } = useLearningContext();
+
     if (loadingExplanation) {
         return (
-            <div className={`bg-neutral-800 p-4 ${className}`}>
-                <LoadingSpinner size="md" color="white" text="Loading explanation..." />
-            </div>
+            <Card className={className}>
+                <CardHeader>
+                    <CardTitle>Loading Explanation</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Please wait...</p>
+                </CardContent>
+            </Card>
         );
     }
 
     if (!explanation) {
         return (
-            <div className={`bg-neutral-800 p-4 text-center ${className}`}>
-                <div className="text-4xl text-neutral-600 mb-2">✨</div>
-                <p className="text-neutral-400 text-sm">
-                    Click &quot;Explain&quot; to get detailed information about a word
-                </p>
-            </div>
+            <Card className={className}>
+                <CardHeader>
+                    <CardTitle>Explanation</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">
+                        Click &quot;Explain&quot; to get detailed information about a word.
+                    </p>
+                </CardContent>
+            </Card>
         );
     }
 
     return (
-        <div className={`bg-neutral-800 text-neutral-100 p-3 sm:p-4 overflow-y-auto ${className}`}>
-            <article>
-                {/* Word Header */}
-                <header className="mb-4 sm:mb-6">
-                    <h1 className="text-lg sm:text-2xl font-bold mb-1">
-                        {explanation.word}
-                        <span className="text-neutral-400 font-normal text-sm sm:text-lg ml-2 block sm:inline">
-                            ({explanation.englishReference})
-                        </span>
-                    </h1>
-
-                    {/* Pronunciation */}
-                    <div className="text-neutral-400 text-xs sm:text-sm">
-                        <span className="font-mono">{explanation.pronunciationIPA}</span>
-                        {explanation.pronunciationEnglish && (
-                            <span className="ml-2 block sm:inline">({explanation.pronunciationEnglish})</span>
-                        )}
-                    </div>
-                </header>
-
-                {/* Content Sections */}
-                <div className="space-y-4 sm:space-y-6">
-                    {/* Example */}
+        <Card className={className}>
+            <CardHeader>
+                <CardTitle>{explanation.word}</CardTitle>
+                <p className="text-muted-foreground">{explanation.englishReference}</p>
+            </CardHeader>
+            <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="pronunciation">
+                        <AccordionTrigger>Pronunciation</AccordionTrigger>
+                        <AccordionContent>
+                            <p><span className="font-mono">{explanation.pronunciationIPA}</span> ({explanation.pronunciationEnglish})</p>
+                        </AccordionContent>
+                    </AccordionItem>
                     {explanation.example && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-blue-400">
-                                Example
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-blue-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.example}
-                                </pre>
-                            </div>
-                        </section>
+                        <AccordionItem value="example">
+                            <AccordionTrigger>Example</AccordionTrigger>
+                            <AccordionContent>
+                                <pre className="text-sm whitespace-pre-wrap">{explanation.example}</pre>
+                            </AccordionContent>
+                        </AccordionItem>
                     )}
-
-                    {/* Definition */}
                     {explanation.definition && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-green-400">
-                                Definition
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-green-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.definition}
-                                </pre>
-                            </div>
-                        </section>
+                        <AccordionItem value="definition">
+                            <AccordionTrigger>Definition</AccordionTrigger>
+                            <AccordionContent>
+                                <pre className="text-sm whitespace-pre-wrap">{explanation.definition}</pre>
+                            </AccordionContent>
+                        </AccordionItem>
                     )}
-
-                    {/* Explanation */}
                     {explanation.explanation && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-yellow-400">
-                                Explanation
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-yellow-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.explanation}
-                                </pre>
-                            </div>
-                        </section>
+                        <AccordionItem value="explanation">
+                            <AccordionTrigger>Explanation</AccordionTrigger>
+                            <AccordionContent>
+                                <pre className="text-sm whitespace-pre-wrap">{explanation.explanation}</pre>
+                            </AccordionContent>
+                        </AccordionItem>
                     )}
-
-                    {/* Grammar */}
                     {explanation.grammar && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-purple-400">
-                                Grammar
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-purple-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.grammar}
-                                </pre>
-                            </div>
-                        </section>
+                        <AccordionItem value="grammar">
+                            <AccordionTrigger>Grammar</AccordionTrigger>
+                            <AccordionContent>
+                                <pre className="text-sm whitespace-pre-wrap">{explanation.grammar}</pre>
+                            </AccordionContent>
+                        </AccordionItem>
                     )}
-
-                    {/* Facts */}
                     {explanation.facts && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-orange-400">
-                                Interesting Facts
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-orange-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.facts}
-                                </pre>
-                            </div>
-                        </section>
+                        <AccordionItem value="facts">
+                            <AccordionTrigger>Interesting Facts</AccordionTrigger>
+                            <AccordionContent>
+                                <pre className="text-sm whitespace-pre-wrap">{explanation.facts}</pre>
+                            </AccordionContent>
+                        </AccordionItem>
                     )}
-
-                    {/* Synonyms */}
                     {explanation.synonyms && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-cyan-400">
-                                Synonyms & Similar Phrases
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-cyan-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.synonyms}
-                                </pre>
-                            </div>
-                        </section>
+                        <AccordionItem value="synonyms">
+                            <AccordionTrigger>Synonyms & Similar Phrases</AccordionTrigger>
+                            <AccordionContent>
+                                <pre className="text-sm whitespace-pre-wrap">{explanation.synonyms}</pre>
+                            </AccordionContent>
+                        </AccordionItem>
                     )}
-
-                    {/* Alternatives */}
                     {explanation.alternatives && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-pink-400">
-                                Alternative Translations
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-pink-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.alternatives}
-                                </pre>
-                            </div>
-                        </section>
+                        <AccordionItem value="alternatives">
+                            <AccordionTrigger>Alternative Translations</AccordionTrigger>
+                            <AccordionContent>
+                                <pre className="text-sm whitespace-pre-wrap">{explanation.alternatives}</pre>
+                            </AccordionContent>
+                        </AccordionItem>
                     )}
-                </div>
-            </article>
-        </div>
+                </Accordion>
+            </CardContent>
+        </Card>
     );
 };

@@ -1,22 +1,21 @@
 "use client";
 
+import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LoadingSpinner } from './LoadingSpinner';
 
-interface AuthGuardProps {
-    children: React.ReactNode;
-}
-
-export default function AuthGuard({ children }: AuthGuardProps) {
+const AuthGuard: React.FC<{ children: React.ReactNode; }> = ({ children }) => {
     const { authToken, isLoading } = useAuth();
 
     if (isLoading) {
-        return <LoadingSpinner />;
+        return <div>Loading...</div>;
     }
 
     if (!authToken) {
-        return <p className="p-4">Please authenticate to use this page.</p>;
+        return <Navigate to="/login" replace />;
     }
 
     return <>{children}</>;
-}
+};
+
+export default AuthGuard;
