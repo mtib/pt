@@ -1,12 +1,41 @@
 {
   "name": "pt-learn",
-  "version": "0.1.0",
+  "version": "2.0.0",
+  "description": "A modern, interactive web application for learning European Portuguese vocabulary with XP tracking, AI explanations, and speech synthesis.",
+  "keywords": [
+    "portuguese",
+    "language-learning",
+    "education",
+    "nextjs",
+    "react",
+    "typescript",
+    "ai",
+    "speech-synthesis"
+  ],
+  "author": "Portuguese Learning App",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/pt-learn.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/pt-learn/issues"
+  },
+  "homepage": "https://github.com/your-username/pt-learn#readme",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next out dist",
+    "docker:build": "docker build -t pt-learn .",
+    "docker:run": "docker run -d --name pt-learn -p 3000:3000 --env-file .env --restart unless-stopped pt-learn",
+    "docker:stop": "docker stop pt-learn && docker rm pt-learn",
+    "analyze": "cross-env ANALYZE=true next build",
+    "postinstall": "echo 'Installation complete! Run npm run dev to start development.'"
   },
   "dependencies": {
     "@fortawesome/free-solid-svg-icons": "^7.0.0",
@@ -20,18 +49,30 @@
     "openai": "^5.12.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@next/bundle-analyzer": "^15.4.6",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.6",
     "typescript": "^5"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
 }

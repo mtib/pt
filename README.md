@@ -1,83 +1,346 @@
 # Learn European Portuguese
 
-This is an interactive application to learn European Portuguese. It includes features like XP tracking, daily stats, and practice lists.
+A modern, interactive web application for learning European Portuguese vocabulary. Built with Next.js 15, React 19, and TypeScript, this app provides an engaging learning experience with features like XP tracking, daily statistics, speech synthesis, and AI-powered explanations.
 
-## Getting Started
+## ✨ Features
 
-### Development
+### 🎯 Core Learning
+- **Interactive Quiz System**: Practice vocabulary with bidirectional translation (Portuguese ↔ English)
+- **XP System**: Earn experience points based on response speed (1-10 XP per correct answer)
+- **Smart Practice Algorithm**: Words you struggle with are added to a practice list for reinforcement
+- **Speech Synthesis**: Hear Portuguese words pronounced with European Portuguese accent
+- **Progress Tracking**: Remove words from practice after 3 correct attempts
 
-First, run the development server:
+### 📊 Analytics & Progress
+- **Daily Statistics**: Track your daily learning progress
+- **Visual Progress Chart**: 14-day histogram showing your consistency
+- **Achievement System**: Monitor improvement with XP tracking
+- **Local Storage**: All progress is saved locally in your browser
 
-```bash
-npm run dev
+### 🤖 AI-Powered Explanations
+- **Detailed Word Analysis**: Get comprehensive explanations powered by OpenAI GPT-5-nano
+- **European Portuguese Focus**: Specifically tailored for European Portuguese learners
+- **Rich Context**: Includes examples, grammar, pronunciation (IPA), etymology, and cultural context
+- **Smart Caching**: Explanations are cached locally to improve performance and reduce API calls
+
+### 🎨 User Experience
+- **Dark Theme**: Easy on the eyes with a modern dark interface
+- **Keyboard Shortcuts**: Navigate efficiently with keyboard controls
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **JSON-Style Interface**: Unique developer-friendly aesthetic
+- **Error Boundaries**: Graceful error handling prevents crashes
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn package manager
+- OpenAI API key (for explanation features)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd pt-learn
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. **Set up environment variables**
+   
+   Create a `.env.local` file in the root directory:
+   ```bash
+   OPENAI_API_KEY=your_openai_api_key_here
+   PRESHARED_KEY=your_secure_preshared_key_here
+   ```
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+5. **Open your browser**
+   
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+### Authentication Setup
+
+To use the AI explanation features:
+
+1. Set your `PRESHARED_KEY` in the environment variables
+2. Access the app with the authentication key in the URL:
+   ```
+   http://localhost:3000/#auth_YOUR_PRESHARED_KEY
+   ```
+3. The key will be automatically saved and the URL cleaned up
+
+## 🏗️ Architecture
+
+### Technology Stack
+- **Frontend**: Next.js 15 with App Router
+- **UI Framework**: React 19 with TypeScript
+- **Styling**: Tailwind CSS 4 with custom design system
+- **State Management**: React hooks with custom state management
+- **API**: Next.js API routes
+- **AI Integration**: OpenAI GPT-5-nano with structured output
+- **Data Validation**: Zod for runtime type checking
+- **Code Quality**: ESLint + TypeScript for type safety
+
+### Project Structure
+```
+src/
+├── app/                  # Next.js App Router pages
+│   ├── globals.css      # Global styles and theme
+│   ├── layout.tsx       # Root layout component
+│   └── page.tsx         # Main application page
+├── components/          # Reusable UI components
+│   ├── ErrorBoundary.tsx
+│   ├── ExplanationPanel.tsx
+│   ├── LoadingSpinner.tsx
+│   ├── QuizInterface.tsx
+│   └── index.ts
+├── hooks/               # Custom React hooks
+│   └── index.ts         # State management and utilities
+├── lib/                 # Core utilities and API clients
+│   ├── apiClient.ts     # API communication with caching
+│   └── utils.ts         # UI utilities and re-exports
+├── pages/api/           # API routes
+│   └── explain.ts       # OpenAI explanation endpoint
+├── types/               # TypeScript type definitions
+│   └── index.ts         # Core interfaces and constants
+└── utils/               # Pure utility functions
+    └── vocabulary.ts    # Vocabulary-specific logic
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Key Design Patterns
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+#### 🪝 Custom Hooks
+- **Separation of Concerns**: Business logic is separated from UI components
+- **Reusability**: Common patterns are abstracted into reusable hooks
+- **Type Safety**: Full TypeScript support with proper typing
+
+#### 🎯 Component Architecture
+- **Single Responsibility**: Each component has a clear, focused purpose
+- **Composition**: Complex UI is built from simple, composable components
+- **Props Interface**: Consistent prop interfaces with TypeScript validation
+
+#### 📦 State Management
+- **Local Storage Integration**: Automatic persistence with error handling
+- **Optimistic Updates**: UI updates immediately with background persistence
+- **Error Recovery**: Graceful handling of storage and parsing errors
+
+## 🎮 Usage Guide
+
+### Basic Controls
+- **Type to Answer**: Simply start typing in the active input field
+- **Keyboard Shortcuts**:
+  - `N` - Next word
+  - `S` - Show answer
+  - `Space` - Speak current word
+  - `E` - Explain word (requires authentication)
+
+### Learning Flow
+1. **Start Learning**: A Portuguese word is shown, you translate to English (or vice versa)
+2. **Input Answer**: Type your translation in the active input field
+3. **Instant Feedback**: Correct answers are highlighted immediately
+4. **XP Rewards**: Faster responses earn more XP (1-10 points)
+5. **Progress Tracking**: Incorrect answers add words to your practice list
+6. **Explanations**: Click "Explain" for detailed AI-powered analysis
+
+### Practice System
+- Words you struggle with are automatically added to a practice list
+- Practice words have a higher chance of appearing in future sessions
+- After 3 correct answers, words are removed from the practice list
+- The practice probability increases as your practice list grows
+
+## 🔧 Configuration
 
 ### Environment Variables
-
-Before running the application, ensure you have the required environment variables set up. Create a `.env` file in the root of the project and add the following variables:
-
 ```bash
-OPENAI_API_KEY=your_openai_api_key_here
-PRESHARED_KEY=your_preshared_key_here
+# Required: OpenAI API key for explanations
+OPENAI_API_KEY=sk-proj-...
+
+# Required: Authentication key for API access
+PRESHARED_KEY=your-secure-random-key
+
+# Optional: Override Next.js configuration
+NODE_ENV=development
 ```
 
-You can use the `.env.example` file as a reference.
+### Customization Options
 
-### Passing the Auth Key
-
-To use the application, you need to pass the pre-shared auth key. This can be done by appending the key to the URL hash in the following format:
-
+#### Learning Parameters
+Modify constants in `src/types/index.ts`:
+```typescript
+export const CONFIG = {
+  MIN_XP: 1,                    // Minimum XP per correct answer
+  MAX_XP: 10,                   // Maximum XP per correct answer
+  FAST_RESPONSE_TIME: 2000,     // Fast response threshold (ms)
+  SLOW_RESPONSE_TIME: 30000,    // Slow response threshold (ms)
+  CORRECT_DELAY: 500,           // Delay after correct answer (ms)
+  REVEAL_DELAY: 2000,           // Delay after showing answer (ms)
+  MAX_CORRECT_COUNT: 3,         // Attempts needed to master a word
+  // ... more configuration options
+} as const;
 ```
-http://localhost:3000/#auth_YOUR_AUTH_KEY
+
+#### UI Theming
+The application uses a custom Tailwind configuration with a dark theme. Modify `src/app/globals.css` to customize colors and styling.
+
+## 🚀 Deployment
+
+### Production Build
+```bash
+npm run build
+npm start
 ```
 
-Replace `YOUR_AUTH_KEY` with the actual key. The application will automatically extract the key from the URL, store it in `localStorage`, and use it for API requests.
+### Docker Deployment
+```bash
+# Build the Docker image
+docker build -t pt-learn .
 
-### Production
+# Run the container
+docker run -d \
+  --name pt-learn \
+  -p 3000:3000 \
+  --env-file .env \
+  --restart unless-stopped \
+  pt-learn
+```
 
-To build and run the application in production:
+### Vercel Deployment
+The application is optimized for deployment on Vercel:
 
-1. Build the application:
-   ```bash
-   npm run build
-   ```
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in the Vercel dashboard
+3. Deploy with zero configuration
 
-2. Start the application:
-   ```bash
-   npm start
-   ```
+## 🧪 Development
 
-### Docker
+### Code Quality
+- **TypeScript**: Full type safety throughout the application
+- **ESLint**: Enforces consistent code style and catches common errors
+- **Error Boundaries**: Prevents crashes with graceful error handling
+- **Comprehensive Error Handling**: Network errors, API failures, and edge cases are handled
 
-This project includes a `Dockerfile` for containerized deployment. To build and run the Docker container:
+### Testing Strategy
+The application includes built-in error handling and validation:
+- Input validation with Zod schemas
+- API error handling with custom error types
+- Client-side error boundaries
+- Graceful fallbacks for missing data
 
-1. Build the Docker image:
-   ```bash
-   docker build -t pt-learn .
-   ```
+### Performance Optimizations
+- **Code Splitting**: Automatic code splitting with Next.js
+- **Caching**: Smart caching for API responses and explanations
+- **Optimistic Updates**: Immediate UI feedback with background persistence
+- **Request Deduplication**: Prevents duplicate API calls
+- **Bundle Optimization**: Optimized production builds
 
-2. Run the Docker container:
-   ```bash
-   docker run -d \
-     --name pt \
-     -p 3000:3000 \
-     --env-file .env \
-     --restart unless-stopped \
-     pt-learn
-   ```
+## 📚 API Reference
 
-The application will be accessible at [http://localhost:3000](http://localhost:3000).
+### `/api/explain`
+Generates detailed explanations for Portuguese words.
 
-## Features
+#### Request
+```typescript
+POST /api/explain
+Content-Type: application/json
+Authorization: Bearer <your-auth-key>
 
-- XP tracking to measure your progress.
-- Daily stats to keep track of your learning habits.
-- Practice lists to reinforce your vocabulary.
+{
+  "word": "casa",
+  "englishReference": "house"
+}
+```
 
-## Contributing
+#### Response
+```typescript
+{
+  "word": "casa",
+  "englishReference": "house",
+  "example": "A minha casa é muito bonita. (My house is very beautiful.)",
+  "explanation": "This is a fundamental word in Portuguese...",
+  "definition": "A building for human habitation...",
+  "grammar": "Feminine noun (a casa, as casas)...",
+  "facts": "The word 'casa' comes from Latin 'casa'...",
+  "pronunciationIPA": "/ˈka.zɐ/",
+  "pronunciationEnglish": "KAH-za"
+}
+```
 
-Contributions are welcome! Feel free to open issues or submit pull requests to improve the project.
+#### Error Responses
+- `400` - Bad Request (missing or invalid parameters)
+- `403` - Forbidden (invalid or missing authentication)
+- `429` - Too Many Requests (rate limit exceeded)
+- `500` - Internal Server Error
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+1. **Fork the repository** and create a feature branch
+2. **Follow TypeScript best practices** and maintain type safety
+3. **Add documentation** for new features or API changes
+4. **Test your changes** thoroughly before submitting
+5. **Follow the existing code style** and conventions
+
+### Development Setup
+1. Clone your fork and install dependencies
+2. Create a `.env.local` file with required environment variables
+3. Run `npm run dev` to start the development server
+4. Make your changes and test thoroughly
+5. Submit a pull request with a clear description
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Vocabulary Data**: [Thousand Most Common Words](https://github.com/SMenigat/thousand-most-common-words) by SMenigat
+- **AI Technology**: Powered by OpenAI's GPT-5-nano model
+- **UI Components**: Built with Tailwind CSS and custom components
+- **Icons & Fonts**: Geist Sans and Geist Mono fonts by Vercel
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### "Failed to load vocabulary"
+- Check your internet connection
+- Ensure the external vocabulary API is accessible
+- Try refreshing the page
+
+#### "Authentication failed"
+- Verify your `PRESHARED_KEY` environment variable
+- Make sure you've added the auth key to the URL: `#auth_YOUR_KEY`
+- Check that the key matches between client and server
+
+#### "OpenAI API errors"
+- Verify your `OPENAI_API_KEY` is valid and has sufficient quota
+- Check OpenAI service status
+- Review API usage limits
+
+#### Local storage issues
+- Clear your browser's local storage for the site
+- Disable browser extensions that might interfere
+- Try using an incognito/private browsing window
+
+### Getting Help
+- Check the console for detailed error messages
+- Review the application logs for server-side issues
+- Open an issue on GitHub with detailed reproduction steps
+
+---
+
+**Happy Learning! 🇵🇹** Enjoy your Portuguese learning journey with this modern, feature-rich application!
