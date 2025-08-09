@@ -177,6 +177,14 @@ export function shuffleArray<T>(array: T[]): T[] {
     return shuffled;
 }
 
+export function filterWords(
+    words: Word[],
+): Word[] {
+    return words.filter(it => {
+        return !(it.targetWord == it.englishWord);
+    });
+}
+
 /**
  * Formats a timer value in milliseconds to a human-readable string.
  * 

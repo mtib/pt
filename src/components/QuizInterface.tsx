@@ -9,60 +9,29 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Word, PracticeWord, QuizResult } from '@/types';
 import { formatTimer } from '@/utils/vocabulary';
-
-interface QuizInterfaceProps {
-    /** Current vocabulary XP */
-    vocabularyXP: number;
-    /** Current word being quizzed */
-    currentWord: Word | PracticeWord | null;
-    /** User's current input */
-    userInput: string;
-    /** Current quiz result state */
-    result: QuizResult;
-    /** Whether input fields are editable */
-    isEditable: boolean;
-    /** Timer value in milliseconds */
-    timer: number | null;
-    /** Daily statistics */
-    dailyStats: {
-        todayCount: number;
-        diff: number;
-        histogram: string;
-        practiceListLength: number;
-    };
-    /** Loading state for explanations */
-    loadingExplanation: boolean;
-    /** Whether user is authenticated */
-    isAuthenticated: boolean;
-    /** Callbacks */
-    onInputChange: (value: string) => void;
-    onShow: () => void;
-    onNext: () => void;
-    onSpeak: () => void;
-    onExplain: () => void;
-}
+import { useLearningContext } from '@/contexts';
 
 /**
  * Main quiz interface component
  */
-export const QuizInterface: React.FC<QuizInterfaceProps> = ({
-    vocabularyXP,
-    currentWord,
-    userInput,
-    result,
-    isEditable,
-    timer,
-    dailyStats,
-    loadingExplanation,
-    isAuthenticated,
-    onInputChange,
-    onShow,
-    onNext,
-    onSpeak,
-    onExplain,
-}) => {
+export const QuizInterface: React.FC = () => {
+    const {
+        vocabularyXP,
+        currentWord,
+        userInput,
+        result,
+        isEditable,
+        timer,
+        dailyStats,
+        loadingExplanation,
+        isAuthenticated,
+        handleInputChange,
+        handleShow,
+        handleNext,
+        handleSpeak,
+        handleExplain,
+    } = useLearningContext();
     const portugueseInputRef = useRef<HTMLInputElement>(null);
     const englishInputRef = useRef<HTMLInputElement>(null);
 
@@ -92,24 +61,24 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
                 case 'N':
                     if (e.ctrlKey || e.metaKey) break; // Allow Ctrl+N/Cmd+N
                     e.preventDefault();
-                    onNext();
+                    handleNext();
                     break;
                 case 's':
                 case 'S':
                     if (e.ctrlKey || e.metaKey) break; // Allow Ctrl+S/Cmd+S
                     e.preventDefault();
-                    onShow();
+                    handleShow();
                     break;
                 case ' ': // Spacebar
                     e.preventDefault();
-                    onSpeak();
+                    handleSpeak();
                     break;
                 case 'e':
                 case 'E':
                     if (e.ctrlKey || e.metaKey) break; // Allow Ctrl+E/Cmd+E
                     if (isAuthenticated) {
                         e.preventDefault();
-                        onExplain();
+                        handleExplain();
                     }
                     break;
             }
@@ -117,7 +86,7 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [onNext, onShow, onSpeak, onExplain, isAuthenticated]);
+    }, [handleNext, handleShow, handleSpeak, handleExplain, isAuthenticated]);
 
     const getInputClassName = (isActive: boolean) => `
     bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 font-bold text-base
@@ -144,7 +113,7 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
                             name="portuguese"
                             type="text"
                             value={currentWord?.isEnglishToPortuguese ? userInput : currentWord?.targetWord || ''}
-                            onChange={(e) => onInputChange(e.target.value)}
+                            onChange={(e) => handleInputChange(e.target.value)}
                             className={getInputClassName(isEditable && !!currentWord?.isEnglishToPortuguese)}
                             disabled={!isEditable || !currentWord?.isEnglishToPortuguese}
                             aria-label="Portuguese word input"
@@ -158,7 +127,7 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
                             name="english"
                             type="text"
                             value={currentWord?.isEnglishToPortuguese ? currentWord?.englishWord || '' : userInput}
-                            onChange={(e) => onInputChange(e.target.value)}
+                            onChange={(e) => handleInputChange(e.target.value)}
                             className={getInputClassName(isEditable && !currentWord?.isEnglishToPortuguese)}
                             disabled={!isEditable || !!currentWord?.isEnglishToPortuguese}
                             aria-label="English word input"
@@ -176,7 +145,7 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
   "actions": [
     `}
                         <button
-                            onClick={onShow}
+                            onClick={handleShow}
                             className={getButtonClassName()}
                             title="Show answer (S)"
                             aria-label="Show answer"
@@ -185,7 +154,7 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
                         </button>
                         {`,\n    `}
                         <button
-                            onClick={onNext}
+                            onClick={handleNext}
                             className={getButtonClassName()}
                             title="Next word (N)"
                             aria-label="Next word"
@@ -194,7 +163,7 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
                         </button>
                         {`,\n    `}
                         <button
-                            onClick={onSpeak}
+                            onClick={handleSpeak}
                             disabled={!currentWord}
                             className={getButtonClassName(!currentWord)}
                             title="Speak word (Space)"
@@ -204,7 +173,7 @@ export const QuizInterface: React.FC<QuizInterfaceProps> = ({
                         </button>
                         {`,\n    `}
                         <button
-                            onClick={onExplain}
+                            onClick={handleExplain}
                             disabled={!currentWord || loadingExplanation || !isAuthenticated}
                             className={getButtonClassName(!currentWord || loadingExplanation || !isAuthenticated)}
                             title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}

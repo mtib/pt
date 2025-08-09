@@ -9,14 +9,10 @@
  */
 
 import React from 'react';
-import { Explanation } from '@/types';
 import { LoadingSpinner } from './LoadingSpinner';
+import { useLearningContext } from '@/contexts';
 
 interface ExplanationPanelProps {
-    /** Current explanation data */
-    explanation: Explanation | null;
-    /** Loading state */
-    loading: boolean;
     /** Additional CSS classes */
     className?: string;
 }
@@ -25,11 +21,10 @@ interface ExplanationPanelProps {
  * Panel component for displaying word explanations
  */
 export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({
-    explanation,
-    loading,
     className = '',
 }) => {
-    if (loading) {
+    const { explanation, loadingExplanation } = useLearningContext();
+    if (loadingExplanation) {
         return (
             <div className={`bg-neutral-800 p-4 ${className}`}>
                 <LoadingSpinner size="md" color="white" text="Loading explanation..." />
