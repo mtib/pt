@@ -130,6 +130,9 @@ export const STORAGE_KEYS = {
     VOCABULARY_XP: 'vocabularyXP',
     PRACTICE_WORDS: 'practiceWords',
     EXPLANATIONS: 'explanations',
+
+    // Daily statistics
+    DAILY_STATS: 'pt-daily-stats',
 } as const;
 
 /**

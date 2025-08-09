@@ -64,7 +64,7 @@ function LearnPortugueseAppInner(): React.JSX.Element {
       </div>
 
       {/* Explanation Panel */}
-      <div className="lg:w-[800px] lg:border-l border-neutral-700 font-mono lg:h-screen lg:overflow-hidden">
+      <div className="lg:min-w-[400px] lg:border-l border-neutral-700 font-mono lg:h-screen lg:overflow-hidden">
         <ExplanationPanel className="lg:border-t-0 border-t border-neutral-700 h-full" />
       </div>
 

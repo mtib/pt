@@ -10,21 +10,17 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { DatabasePracticeWord, Explanation, QuizResult, CONFIG, STORAGE_KEYS } from '@/types';
-// TODO: Re-enable hooks when they're properly exported
-// import {
-//     useVocabularyProgress,
-//     useDailyStats,
-//     useAuth,
-//     useSpeechSynthesis,
-//     useTimer
-// } from '@/hooks';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 import {
-    calculateXP,
-    normalizeText
-} from '@/utils/vocabulary';
+    Explanation,
+    QuizResult,
+    DatabasePracticeWord,
+} from '@/types';
 import DatabaseApiClient, { DatabaseStatsResponse } from '@/lib/database-api-client';
+import { normalizeText, calculateXP } from '@/utils/vocabulary';
+import { CONFIG, STORAGE_KEYS } from '@/types';
+import { useDailyStats } from '@/hooks';
 
 /**
  * Practice word metadata for local storage
@@ -113,9 +109,17 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     const [vocabularyXP, setVocabularyXP] = useState(0);
     const [practiceWordIds, setPracticeWordIds] = useState<PracticeWordMetadata[]>([]);
 
-    // Authentication state
-    const [authKey, setAuthKey] = useState<string>('');
-    const isAuthenticated = !!authKey;
+    // Get auth token from the new AuthContext
+    const { authToken } = useAuth();
+    const isAuthenticated = !!authToken;
+
+    // Daily stats management
+    const {
+        getTodayCount,
+        getDaysDiff,
+        getLast14DaysHistogram,
+        incrementTodayCount,
+    } = useDailyStats();
 
     // Simple speech synthesis
     const speakPortuguese = useCallback((text: string) => {
@@ -186,12 +190,6 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         setTimerEndTime(null);
     }, [timer]);
 
-    // Simple stats tracking (replace with proper hooks later)
-    const [dailyCount, setDailyCount] = useState(0);
-    const getTodayCount = () => dailyCount;
-    const getDaysDiff = () => 0;
-    const getLast14DaysHistogram = () => '■'.repeat(14);
-
     const addXP = useCallback((xp: number) => setVocabularyXP(prev => prev + xp), []);
 
     const addToPractice = useCallback((word: DatabasePracticeWord) => {
@@ -242,8 +240,6 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         ));
     }, []);
 
-    const incrementTodayCount = useCallback(() => setDailyCount(prev => prev + 1), []);
-
     // Load practice words from local storage on mount
     useEffect(() => {
         const saved = localStorage.getItem(STORAGE_KEYS.PRACTICE_WORDS);
@@ -268,23 +264,6 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
                 console.error('Failed to load XP from storage:', error);
             }
         }
-
-        // Load auth key from local storage
-        const savedAuthKey = localStorage.getItem('auth');
-        if (savedAuthKey) {
-            setAuthKey(savedAuthKey);
-        }
-
-        // Check for auth key in URL hash
-        const hash = window.location.hash;
-        const match = hash.match(/^#auth_(.+)$/);
-
-        if (match) {
-            const key = match[1];
-            setAuthKey(key);
-            // Clear the hash from the URL
-            window.location.hash = '';
-        }
     }, []);
 
     // Save practice words to local storage whenever they change
@@ -296,15 +275,6 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     useEffect(() => {
         localStorage.setItem(STORAGE_KEYS.VOCABULARY_XP, vocabularyXP.toString());
     }, [vocabularyXP]);
-
-    // Save auth key to local storage whenever it changes
-    useEffect(() => {
-        if (authKey) {
-            localStorage.setItem('auth', authKey);
-        } else {
-            localStorage.removeItem('auth');
-        }
-    }, [authKey]);
 
     // Clean up practice words that have reached max correct count
     useEffect(() => {
@@ -556,7 +526,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
      * Fetches and displays detailed explanation for the current word using phrase ID
      */
     const handleExplain = useCallback(async () => {
-        if (!currentWord || !authKey) return;
+        if (!currentWord || !authToken) return;
 
         setLoadingExplanation(true);
         setResult('explaining');
@@ -564,23 +534,17 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
 
         try {
             const sourcePhraseId = currentWord.id; // The word that was shown to the user
-            const expectedAnswerId = (() => {
-                if (currentWord.direction === 'pt-to-en') {
-                    // For PT->EN, expected answer is the first English option
-                    return currentWord.acceptableAnswers.find(answer => answer.phrase === currentWord.translation_en)?.id
-                        || currentWord.acceptableAnswers[0]!.id;
-                } else {
-                    // For EN->PT, expected answer is the Portuguese phrase
-                    return currentWord.acceptableAnswers.find(answer => answer.phrase === currentWord.translation_pt)?.id
-                        || currentWord.acceptableAnswers[0]!.id;
-                }
-            })();
+            const expectedAnswerId = currentWord.acceptableAnswers[0]!.id; // The most similar acceptable answer
+
+            if (!expectedAnswerId) {
+                throw new Error("Could not determine the expected answer for the explanation.");
+            }
 
             const response = await fetch('/api/explain', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authKey}`
+                    'Authorization': `Bearer ${authToken}`
                 },
                 body: JSON.stringify({
                     sourcePhraseId,
@@ -589,10 +553,12 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to fetch explanation: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to fetch explanation');
             }
 
             const explanationData: Explanation = await response.json();
+
             setExplanation(explanationData);
             setResult('explained');
 
@@ -604,17 +570,15 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
 
             // Speak the Portuguese word
             speakPortuguese(currentWord.translation_pt);
-
-            // Add to practice list
             addToPractice(currentWord);
         } catch (err) {
-            console.error('Failed to fetch explanation:', err);
-            setError('Failed to load explanation. Please try again.');
-            setResult('incorrect');
+            console.error('Failed to explain word:', err);
+            setError(err instanceof Error ? err.message : 'An unknown error occurred.');
         } finally {
             setLoadingExplanation(false);
+            // Do not automatically advance, let user review explanation
         }
-    }, [currentWord, authKey, speakPortuguese, addToPractice]);
+    }, [currentWord, authToken, speakPortuguese, addToPractice]);
 
     /**
      * Dismisses the current error message

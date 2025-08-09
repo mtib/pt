@@ -105,21 +105,27 @@ export async function findExistingPhrase(
  */
 export async function getPhraseById(id: number): Promise<DbPhrase | undefined> {
     const db = getDatabase();
-
-    return db.getQuery<DbPhrase>(
-        SQL_QUERIES.GET_PHRASE_BY_ID,
-        [id]
-    );
+    return db.getQuery<DbPhrase>(SQL_QUERIES.GET_PHRASE_BY_ID, [id]);
 }
 
 /**
- * Get a random phrase from the specified language
+ * Search for phrases in the database with fuzzy matching
+ */
+export async function searchPhrases(query: string): Promise<DbPhrase[]> {
+    const db = getDatabase();
+    const searchQuery = `%${query}%`;
+    return db.allQuery<DbPhrase>(SQL_QUERIES.SEARCH_PHRASES, [searchQuery]);
+}
+
+/**
+ * Get a random phrase from the database for a given language
+ * Ensures that the phrase has at least one translation
  */
 export async function getRandomPhrase(language: SupportedLanguage): Promise<DbPhrase | undefined> {
     const db = getDatabase();
 
     return db.getQuery<DbPhrase>(
-        SQL_QUERIES.GET_RANDOM_PHRASE,
+        SQL_QUERIES.GET_RANDOM_PHRASE_WITH_TRANSLATION,
         [language]
     );
 }
@@ -391,6 +397,31 @@ export async function updatePhraseFrequency(
         SQL_QUERIES.UPDATE_PHRASE_FREQUENCY,
         [relativeFrequency, phraseId]
     );
+}
+
+/**
+ * Delete a phrase from the database by its ID
+ */
+export async function deletePhrase(phraseId: number): Promise<void> {
+    const db = getDatabase();
+    await db.runQuery(SQL_QUERIES.DELETE_PHRASE_BY_ID, [phraseId]);
+}
+
+/**
+ * Get all distinct categories from the database
+ */
+export async function getAllCategories(): Promise<string[]> {
+    const db = getDatabase();
+    const results = await db.allQuery<{ category: string; }>(SQL_QUERIES.GET_ALL_CATEGORIES);
+    return results.map(row => row.category);
+}
+
+/**
+ * Get all phrases that do not have a translation
+ */
+export async function getOrphanPhrases(): Promise<DbPhrase[]> {
+    const db = getDatabase();
+    return db.allQuery<DbPhrase>(SQL_QUERIES.GET_ORPHAN_PHRASES);
 }
 
 /**

@@ -13,14 +13,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { VocabularyAPI, ImportResponse, PhrasePairImport } from '@/lib/database';
 import { formatSqlError } from '@/lib/database';
+import { withApiAuth } from '@/lib/auth';
 
 /**
  * Request body interface
  */
 interface ImportRequest {
-    data: PhrasePairImport[]; // Array of phrase pairs to import
-    overwrite?: boolean; // Whether to clear existing data first
-    authKey: string; // Authentication key for import operations
+    data: PhrasePairImport[] | PhrasePairImport; // Can be an array or single object
+    overwrite?: boolean;
 }
 
 /**
@@ -49,23 +49,28 @@ function validateRequestBody(body: unknown): body is ImportRequest {
 
     const candidate = body as Record<string, unknown>;
 
-    // Auth key is required for import operations
-    if (!candidate.authKey || typeof candidate.authKey !== 'string') {
-        return false;
-    }
-
     // Data array is required
-    if (!candidate.data || !Array.isArray(candidate.data)) {
+    if (!candidate.data || (typeof candidate.data !== 'object' && !Array.isArray(candidate.data))) {
         return false;
     }
 
-    // Validate each phrase pair in data array
-    for (const item of candidate.data) {
-        if (!item || typeof item !== 'object') {
-            return false;
-        }
+    // If data is an array, validate each item as a phrase pair
+    if (Array.isArray(candidate.data)) {
+        for (const item of candidate.data) {
+            if (!item || typeof item !== 'object') {
+                return false;
+            }
 
-        const pair = item as Record<string, unknown>;
+            const pair = item as Record<string, unknown>;
+            if (typeof pair.phrase1 !== 'string' || typeof pair.phrase2 !== 'string' ||
+                typeof pair.language1 !== 'string' || typeof pair.language2 !== 'string' ||
+                typeof pair.similarity !== 'number') {
+                return false;
+            }
+        }
+    } else {
+        // If data is a single object, validate it as a phrase pair
+        const pair = candidate.data as Record<string, unknown>;
         if (typeof pair.phrase1 !== 'string' || typeof pair.phrase2 !== 'string' ||
             typeof pair.language1 !== 'string' || typeof pair.language2 !== 'string' ||
             typeof pair.similarity !== 'number') {
@@ -84,129 +89,35 @@ function validateRequestBody(body: unknown): body is ImportRequest {
 /**
  * Main API handler for vocabulary import
  */
-export default async function handler(
+async function handler(
     req: NextApiRequest,
     res: NextApiResponse<ApiResponse>
-): Promise<void> {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
-
-    // Only allow POST requests
+) {
     if (req.method !== 'POST') {
-        res.status(405).json({
-            success: false,
-            error: 'Method not allowed. Only POST requests are supported.'
-        });
+        res.setHeader('Allow', ['POST']);
+        res.status(405).end(`Method ${req.method} Not Allowed`);
         return;
     }
+
+    if (!validateRequestBody(req.body)) {
+        return res.status(400).json({ success: false, error: 'Invalid request body' });
+    }
+
+    const { data, overwrite } = req.body;
+    const phrasePairs = Array.isArray(data) ? data : [data];
 
     try {
-        // Validate request body
-        const body = req.body;
-
-        if (!validateRequestBody(body)) {
-            res.status(400).json({
-                success: false,
-                error: 'Invalid request body',
-                details: 'Request must include authKey and data array with phrase pairs. overwrite is optional boolean.'
-            });
-            return;
-        }
-
-        const { data: phrasePairs, overwrite = false, authKey } = body;
-
-        // Authenticate the request
-        const expectedAuthKey = process.env.PRESHARED_KEY;
-        if (!expectedAuthKey) {
-            res.status(500).json({
-                success: false,
-                error: 'Server configuration error',
-                details: 'Import authentication is not configured on the server.'
-            });
-            return;
-        }
-
-        if (authKey !== expectedAuthKey) {
-            res.status(401).json({
-                success: false,
-                error: 'Authentication failed',
-                details: 'Invalid authentication key provided.'
-            });
-            return;
-        }
-
-        // Initialize database if needed
-        await VocabularyAPI.init();
-
-        console.log(`Starting vocabulary import with ${phrasePairs.length} phrase pairs`);
-
-        if (phrasePairs.length === 0) {
-            res.status(400).json({
-                success: false,
-                error: 'No phrase pairs provided',
-                details: 'The data array cannot be empty.'
-            });
-            return;
-        }
-
-        // Perform the import using the new phrase pair system
-        const importResult = await VocabularyAPI.importVocabularyFromPairs(
-            phrasePairs,
-            overwrite
-        );
-
-        console.log(`Import completed: ${importResult.message}`);
-
-        // Don't cache import responses
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-
-        res.status(200).json({
-            success: true,
-            data: importResult
-        });
-
+        const result = await VocabularyAPI.importVocabularyFromPairs(phrasePairs, overwrite);
+        res.status(200).json({ success: true, data: result });
     } catch (error) {
-        console.error('Vocabulary import API error:', error);
-
-        const errorMessage = error instanceof Error
-            ? formatSqlError(error)
-            : 'Failed to import vocabulary data';
-
-        // Check for specific error types
-        if (error instanceof Error) {
-            if (error.message.includes('SQLITE_CANTOPEN')) {
-                res.status(503).json({
-                    success: false,
-                    error: 'Database unavailable',
-                    details: 'The vocabulary database could not be opened. Please ensure the cache directory exists.'
-                });
-                return;
-            }
-
-            if (error.message.includes('fetch')) {
-                res.status(502).json({
-                    success: false,
-                    error: 'External data source unavailable',
-                    details: 'Could not fetch vocabulary data from external source. Please check network connectivity.'
-                });
-                return;
-            }
-        }
-
+        console.error('Vocabulary import failed:', error);
+        const sqlErrorDetails = formatSqlError(error);
         res.status(500).json({
             success: false,
-            error: errorMessage,
-            details: process.env.NODE_ENV === 'development' ?
-                (error instanceof Error ? error.stack : String(error)) : undefined
+            error: 'Failed to import vocabulary',
+            details: sqlErrorDetails || (error as Error).message,
         });
     }
 }
+
+export default withApiAuth(handler);
