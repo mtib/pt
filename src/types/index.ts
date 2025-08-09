@@ -28,6 +28,8 @@ export interface Word {
 export interface PracticeWord extends Word {
     /** Number of times the user got this word correct */
     correctCount: number;
+    /** Whether the quiz shows English and asks for Portuguese (required for practice words) */
+    isEnglishToPortuguese: boolean;
 }
 
 /**

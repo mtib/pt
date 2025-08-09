@@ -125,13 +125,20 @@ export function selectNextWord(
     const shouldUsePracticeWord = practiceWords.length > 0 && Math.random() < practiceChance;
 
     if (shouldUsePracticeWord) {
-        // Select random practice word
+        // Select random practice word (already has direction set)
         return practiceWords[Math.floor(Math.random() * practiceWords.length)];
     } else {
-        // Select random word not in practice list
-        const availableWords = words.filter(word =>
-            !practiceWords.some(pWord => pWord.rank === word.rank)
-        );
+        // Select random word not in practice list (any direction that's not being practiced)
+        const availableWords = words.filter(word => {
+            const ptToEnInPractice = practiceWords.some(pWord =>
+                pWord.rank === word.rank && !pWord.isEnglishToPortuguese
+            );
+            const enToPtInPractice = practiceWords.some(pWord =>
+                pWord.rank === word.rank && pWord.isEnglishToPortuguese
+            );
+            // If both directions are in practice, don't include this word in available words
+            return !(ptToEnInPractice && enToPtInPractice);
+        });
 
         if (availableWords.length === 0) return null;
 
@@ -141,6 +148,7 @@ export function selectNextWord(
 
 /**
  * Adds random direction (English to Portuguese or vice versa) to a word.
+ * If the word is already a PracticeWord with a direction set, returns it unchanged.
  * 
  * @param word - Word to add direction to
  * @param forceDirection - Optional direction to force
@@ -150,6 +158,11 @@ export function addRandomDirection(
     word: Word | PracticeWord,
     forceDirection?: boolean
 ): Word | PracticeWord {
+    // If it's a PracticeWord, it already has a direction set
+    if ('correctCount' in word && word.isEnglishToPortuguese !== undefined) {
+        return word;
+    }
+
     const isEnglishToPortuguese = forceDirection ?? Math.random() < 0.5;
     return { ...word, isEnglishToPortuguese };
 }

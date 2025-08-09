@@ -143,12 +143,36 @@ export function useVocabularyProgress() {
     }, [setVocabularyXP]);
 
     const addToPractice = useCallback((word: Word | PracticeWord) => {
-        if ('correctCount' in word) return; // Already in practice
+        if ('correctCount' in word) {
+            // If it's already a practice word, reset its correctCount to 0
+            setPracticeWords(prev => prev.map(pWord =>
+                pWord.rank === word.rank && pWord.isEnglishToPortuguese === word.isEnglishToPortuguese
+                    ? { ...pWord, correctCount: 0 }
+                    : pWord
+            ));
+            return;
+        }
 
-        setPracticeWords(prev => [
-            ...prev,
-            { ...word, correctCount: 0 },
-        ]);
+        // Add both directions to practice, ensuring no duplicates
+        setPracticeWords(prev => {
+            const existing = prev.filter(pWord => pWord.rank === word.rank);
+            const ptToEn = existing.find(pWord => !pWord.isEnglishToPortuguese);
+            const enToPt = existing.find(pWord => pWord.isEnglishToPortuguese);
+
+            const newWords: PracticeWord[] = [];
+
+            // Add Portuguese to English if not exists
+            if (!ptToEn) {
+                newWords.push({ ...word, correctCount: 0, isEnglishToPortuguese: false });
+            }
+
+            // Add English to Portuguese if not exists
+            if (!enToPt) {
+                newWords.push({ ...word, correctCount: 0, isEnglishToPortuguese: true });
+            }
+
+            return [...prev, ...newWords];
+        });
     }, [setPracticeWords]);
 
     const incrementCorrectCount = useCallback((word: Word | PracticeWord) => {
@@ -156,7 +180,7 @@ export function useVocabularyProgress() {
 
         setPracticeWords(prev => prev
             .map(pWord => {
-                if (pWord.rank === word.rank) {
+                if (pWord.rank === word.rank && pWord.isEnglishToPortuguese === word.isEnglishToPortuguese) {
                     return { ...pWord, correctCount: pWord.correctCount + 1 };
                 }
                 return pWord;
