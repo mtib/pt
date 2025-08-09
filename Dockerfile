@@ -23,7 +23,7 @@ FROM node:18-alpine AS base
 # Even though they won't be needed at runtime, Next.js requires them during build
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat curl
+RUN apk add --no-cache libc6-compat curl sqlite
 WORKDIR /app
 
 # Install ALL dependencies (dev + production) - needed for building the application
