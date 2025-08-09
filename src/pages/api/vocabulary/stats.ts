@@ -12,7 +12,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import { VocabularyAPI, StatsResponse } from '@/lib/database';
-import { formatSqlError, getDatabase } from '@/lib/database';
+import { formatSqlError } from '@/lib/database';
 
 /**
  * API response types
@@ -79,8 +79,6 @@ export default async function handler(
         // Set cache headers (cache for 15 minutes as stats don't change frequently)
         res.setHeader('Cache-Control', 'public, max-age=900, s-maxage=900');
         res.setHeader('ETag', `"stats-${Date.now()}"`);
-
-        console.log("what!?");
 
         res.status(200).json({
             success: true,

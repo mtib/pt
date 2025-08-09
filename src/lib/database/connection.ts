@@ -112,7 +112,17 @@ class DatabaseManager {
                     }
 
                     console.log(`Connected to SQLite database: ${DB_CONFIG.DB_PATH}`);
-                    resolve();
+
+                    // Enable foreign keys
+                    this.db!.run('PRAGMA foreign_keys = ON', (pragmaError) => {
+                        if (pragmaError) {
+                            console.error('Error enabling foreign keys:', pragmaError);
+                            reject(pragmaError);
+                            return;
+                        }
+                        console.log('Foreign keys enabled');
+                        resolve();
+                    });
                 }
             );
         });
@@ -128,22 +138,45 @@ class DatabaseManager {
 
         console.log("Creating tables");
 
-        // Create tables
+        // Create tables using direct database calls to avoid circular dependency
         console.log("- phrases");
-        await this.runQuery(SQL_QUERIES.CREATE_PHRASES_TABLE);
+        await this.runQueryDirect(SQL_QUERIES.CREATE_PHRASES_TABLE);
         console.log("- similarity");
-        await this.runQuery(SQL_QUERIES.CREATE_SIMILARITY_TABLE);
+        await this.runQueryDirect(SQL_QUERIES.CREATE_SIMILARITY_TABLE);
 
         console.log("Tables created");
 
         // Create indexes
         for (const indexQuery of SQL_QUERIES.CREATE_INDEXES) {
-            await this.runQuery(indexQuery);
+            await this.runQueryDirect(indexQuery);
         }
 
         console.log("Indices created");
 
         console.log('Database schema initialized');
+    }
+
+    /**
+     * Execute a SQL query directly without initialization checks
+     * Used during initialization to avoid circular dependencies
+     */
+    private async runQueryDirect(sql: string, params: any[] = []): Promise<void> {
+        if (!this.db) {
+            throw new Error('Database connection not available');
+        }
+
+        return new Promise((resolve, reject) => {
+            this.db!.run(sql, params, function (err) {
+                if (err) {
+                    console.error('Query execution error:', err);
+                    console.error('SQL:', sql);
+                    console.error('Params:', params);
+                    reject(err);
+                    return;
+                }
+                resolve();
+            });
+        });
     }
 
     /**

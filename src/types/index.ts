@@ -27,12 +27,17 @@ export interface DatabasePracticeWord {
     direction: Direction;
     /** Practice tracking - number of correct answers */
     correctCount?: number;
-    /** Practice tracking - number of incorrect answers */
-    incorrectCount?: number;
     /** Practice tracking - last practice timestamp */
     lastPracticed?: number;
-    /** All acceptable answers for current direction (includes synonyms and alternatives) */
-    acceptableAnswers?: string[];
+    /** 
+     * All acceptable answers for current direction (includes synonyms and alternatives with metadata)
+     * Guaranteed to be sorted in descending similarity, with acceptableAnswers[0].phrase being identical to translation_pt (when direction is en-to-pt) or translation_en (when direction is pt-to-en)
+     */
+    acceptableAnswers: Array<{
+        phrase: string;
+        id: number;
+        similarity: number;
+    }>;
 }
 
 /**
@@ -145,6 +150,8 @@ export const CONFIG = {
     REVEAL_DELAY: 2000,
     /** Maximum correct count before removing from practice */
     MAX_CORRECT_COUNT: 3,
+    /** Maximum correct count before removing from practice (configurable) */
+    PRACTICE_MAX_CORRECT_COUNT: 3,
     /** Base practice chance */
     BASE_PRACTICE_CHANCE: 0.3,
     /** Practice chance multiplier */

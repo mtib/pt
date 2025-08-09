@@ -52,20 +52,34 @@ export async function insertSimilarity(
     const db = getDatabase();
 
     await db.withTransaction(async () => {
-        // Insert the primary relationship
+        await insertSimilarityWithoutTransaction(db, fromPhraseId, toPhraseId, similarity, bidirectional);
+    });
+}
+
+/**
+ * Insert a similarity relationship without starting a new transaction
+ * Used when already within a transaction context
+ */
+async function insertSimilarityWithoutTransaction(
+    db: ReturnType<typeof getDatabase>,
+    fromPhraseId: number,
+    toPhraseId: number,
+    similarity: number,
+    bidirectional: boolean = true
+): Promise<void> {
+    // Insert the primary relationship
+    await db.runQuery(
+        SQL_QUERIES.INSERT_SIMILARITY,
+        [fromPhraseId, toPhraseId, similarity]
+    );
+
+    // Insert the reverse relationship if bidirectional
+    if (bidirectional && fromPhraseId !== toPhraseId) {
         await db.runQuery(
             SQL_QUERIES.INSERT_SIMILARITY,
-            [fromPhraseId, toPhraseId, similarity]
+            [toPhraseId, fromPhraseId, similarity]
         );
-
-        // Insert the reverse relationship if bidirectional
-        if (bidirectional && fromPhraseId !== toPhraseId) {
-            await db.runQuery(
-                SQL_QUERIES.INSERT_SIMILARITY,
-                [toPhraseId, fromPhraseId, similarity]
-            );
-        }
-    });
+    }
 }
 
 /**
@@ -123,22 +137,6 @@ export async function getTranslations(
 
     return db.allQuery<PhraseWithSimilarity>(
         SQL_QUERIES.GET_TRANSLATIONS,
-        [phraseId, minSimilarity, Math.min(limit, VOCAB_CONFIG.MAX_LIMIT)]
-    );
-}
-
-/**
- * Get similar phrases in the same language (synonyms, related words)
- */
-export async function getSimilarPhrases(
-    phraseId: number,
-    minSimilarity: number = 0.6,
-    limit: number = VOCAB_CONFIG.DEFAULT_LIMIT
-): Promise<PhraseWithSimilarity[]> {
-    const db = getDatabase();
-
-    return db.allQuery<PhraseWithSimilarity>(
-        SQL_QUERIES.GET_SIMILAR_PHRASES,
         [phraseId, minSimilarity, Math.min(limit, VOCAB_CONFIG.MAX_LIMIT)]
     );
 }
@@ -255,7 +253,7 @@ export async function importVocabularyFromPairs(
                         phrase1Id = await insertPhrase(
                             phrase1,
                             pair.language1 as SupportedLanguage,
-                            undefined, // No frequency data
+                            pair.similarity, // Use similarity as relative frequency
                             pair.category1
                         );
                     }
@@ -265,13 +263,14 @@ export async function importVocabularyFromPairs(
                         phrase2Id = await insertPhrase(
                             phrase2,
                             pair.language2 as SupportedLanguage,
-                            undefined, // No frequency data
+                            pair.similarity, // Use similarity as relative frequency  
                             pair.category2
                         );
                     }
 
                     // Create similarity relationship
-                    await insertSimilarity(
+                    await insertSimilarityWithoutTransaction(
+                        db,
                         phrase1Id,
                         phrase2Id,
                         pair.similarity,

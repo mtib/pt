@@ -67,9 +67,7 @@ export const SQL_QUERIES = {
             phrase TEXT NOT NULL,
             language TEXT NOT NULL,
             relative_frequency REAL,
-            category TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            category TEXT
         )
     `,
 
@@ -80,7 +78,6 @@ export const SQL_QUERIES = {
             from_phrase_id INTEGER NOT NULL,
             to_phrase_id INTEGER NOT NULL,
             similarity REAL NOT NULL CHECK(similarity >= 0.0 AND similarity <= 1.0),
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (from_phrase_id) REFERENCES phrases(id) ON DELETE CASCADE,
             FOREIGN KEY (to_phrase_id) REFERENCES phrases(id) ON DELETE CASCADE,
             UNIQUE(from_phrase_id, to_phrase_id)
@@ -143,24 +140,6 @@ export const SQL_QUERIES = {
         SELECT id, phrase, language, relative_frequency
         FROM phrases
         WHERE id = ?
-    `,
-
-    /** Get similar phrases (same language) */
-    GET_SIMILAR_PHRASES: `
-        SELECT 
-            p_to.id,
-            p_to.phrase,
-            p_to.language,
-            p_to.relative_frequency,
-            s.similarity
-        FROM similarity s
-        JOIN phrases p_from ON s.from_phrase_id = p_from.id
-        JOIN phrases p_to ON s.to_phrase_id = p_to.id
-        WHERE p_from.id = ? 
-            AND p_from.language = p_to.language
-            AND s.similarity >= ?
-        ORDER BY s.similarity DESC
-        LIMIT ?
     `,
 
     /** Get database statistics */
@@ -240,11 +219,6 @@ export interface ValidationResponse {
     matchedPhrase?: PhraseWithSimilarity;
     correctAnswers: PhraseWithSimilarity[];
     normalizedUserInput: string;
-}
-
-export interface SimilarPhrasesResponse {
-    sourcePhrase: DbPhrase;
-    similarPhrases: PhraseWithSimilarity[];
 }
 
 export interface StatsResponse {

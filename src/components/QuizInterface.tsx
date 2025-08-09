@@ -22,7 +22,7 @@ export const QuizInterface: React.FC = () => {
         userInput,
         result,
         isEditable,
-        timer,
+        remainingTime,
         dailyStats,
         loadingExplanation,
         isAuthenticated,
@@ -183,7 +183,7 @@ export const QuizInterface: React.FC = () => {
                         </button>
                         {`
   ],
-  "nextIn": "${timer ? formatTimer(timer) : 'infinity'}"
+  "nextIn": "${remainingTime !== null ? formatTimer(remainingTime) : 'infinity'}"
 }
 `}
                     </code>

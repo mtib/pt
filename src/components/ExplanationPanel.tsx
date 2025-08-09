@@ -135,6 +135,34 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({
                             </div>
                         </section>
                     )}
+
+                    {/* Synonyms */}
+                    {explanation.synonyms && (
+                        <section>
+                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-cyan-400">
+                                Synonyms & Similar Phrases
+                            </h2>
+                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-cyan-500">
+                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
+                                    {explanation.synonyms}
+                                </pre>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Alternatives */}
+                    {explanation.alternatives && (
+                        <section>
+                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-pink-400">
+                                Alternative Translations
+                            </h2>
+                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-pink-500">
+                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
+                                    {explanation.alternatives}
+                                </pre>
+                            </div>
+                        </section>
+                    )}
                 </div>
             </article>
         </div>

@@ -54,10 +54,9 @@ async function main() {
         try {
             const statsResponse = await fetch('http://localhost:3000/api/vocabulary/stats');
             if (statsResponse.ok) {
-                const currentStats = await statsResponse.json();
+                const currentStats = (await statsResponse.json())["data"];
                 console.log(`   Current phrases: ${currentStats.totalPhrases}`);
                 console.log(`   Current similarities: ${currentStats.totalSimilarities}`);
-                console.log(`   Languages: ${currentStats.languages.join(', ')}\n`);
                 
                 if (currentStats.totalPhrases > 0 && !overwrite && !dryRun) {
                     console.log('⚠️  Database contains existing data. Use --overwrite to clear it first.');
@@ -155,8 +154,9 @@ async function main() {
             language1: 'en',
             phrase2: word.targetWord.trim(), 
             language2: 'pt',
-            similarity: 0.95, // High similarity for direct translations
-            category: null
+            similarity: 0.8, // Desired frequency as similarity score
+            category1: undefined,
+            category2: undefined
         }));
 
         console.log(`   Converted ${phrasePairs.length} phrase pairs\n`);
@@ -220,10 +220,9 @@ async function main() {
         try {
             const finalStatsResponse = await fetch('http://localhost:3000/api/vocabulary/stats');
             if (finalStatsResponse.ok) {
-                const finalStats = await finalStatsResponse.json();
+                const finalStats = (await finalStatsResponse.json())["data"];
                 console.log(`   Total phrases: ${finalStats.totalPhrases}`);
                 console.log(`   Total similarities: ${finalStats.totalSimilarities}`);
-                console.log(`   Languages: ${finalStats.languages.join(', ')}`);
                 console.log(`   Average similarity: ${finalStats.averageSimilarity?.toFixed(3) || 'N/A'}\n`);
             }
         } catch (error) {

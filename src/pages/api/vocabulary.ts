@@ -23,7 +23,6 @@ interface DatabaseVocabularyResponse {
         random: string;
         practice: string;
         stats: string;
-        similar: string;
         import: string;
     };
 }
@@ -96,7 +95,6 @@ export default async function handler(
                 random: '/api/vocabulary/random',
                 practice: '/api/vocabulary/practice/{phraseId}',
                 stats: '/api/vocabulary/stats',
-                similar: '/api/vocabulary/similar/{phraseId}',
                 import: '/api/vocabulary/import'
             }
         };

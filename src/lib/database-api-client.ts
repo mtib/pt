@@ -36,11 +36,6 @@ export interface VocabularyResponse {
     acceptableSimilarity: number;
 }
 
-export interface SimilarPhrasesResponse {
-    sourcePhrase: DatabasePhrase;
-    similarPhrases: DatabasePhraseWithSimilarity[];
-}
-
 export interface DatabaseStatsResponse {
     totalPhrases: number;
     totalSimilarities: number;
@@ -147,35 +142,6 @@ export const DatabaseVocabularyApi = {
      */
     async getPracticeWord(phraseId: number): Promise<VocabularyResponse> {
         return apiRequest<VocabularyResponse>(`${API_BASE}/practice/${phraseId}`);
-    },
-
-    /**
-     * Get similar phrases (synonyms, related words, translations)
-     */
-    async getSimilarPhrases(
-        phraseId: number,
-        options: {
-            minSimilarity?: number;
-            sameLanguage?: boolean;
-            limit?: number;
-        } = {}
-    ): Promise<SimilarPhrasesResponse> {
-        const params = new URLSearchParams();
-
-        if (options.minSimilarity !== undefined) {
-            params.set('minSimilarity', options.minSimilarity.toString());
-        }
-        if (options.sameLanguage !== undefined) {
-            params.set('sameLanguage', options.sameLanguage.toString());
-        }
-        if (options.limit !== undefined) {
-            params.set('limit', options.limit.toString());
-        }
-
-        const queryString = params.toString();
-        const url = `${API_BASE}/similar/${phraseId}${queryString ? `?${queryString}` : ''}`;
-
-        return apiRequest<SimilarPhrasesResponse>(url);
     },
 
     /**
