@@ -42,7 +42,7 @@ A modern, interactive web application for learning European Portuguese vocabular
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd pt-learn
+   cd pt
    ```
 
 2. **Install dependencies**
@@ -189,6 +189,16 @@ docker run -d \
   --env-file .env \
   --restart unless-stopped \
   pt-learn
+```
+
+Or use the one from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/mtib/pt:latest
+docker run -p 3000:3000 \
+  -e OPENAI_API_KEY=your-key \
+  -e PRESHARED_KEY=your-auth-key \
+  ghcr.io/mtib/pt:latest
 ```
 
 ### Vercel Deployment
