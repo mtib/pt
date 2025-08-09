@@ -35,6 +35,9 @@
     "docker:run": "docker run -d --name pt-learn -p 3000:3000 --env-file .env --restart unless-stopped pt-learn",
     "docker:stop": "docker stop pt-learn && docker rm pt-learn",
     "analyze": "cross-env ANALYZE=true next build",
+    "migrate-vocab": "node scripts/migrate-vocabulary.js",
+    "migrate-vocab:overwrite": "node scripts/migrate-vocabulary.js --overwrite",
+    "migrate-vocab:dry-run": "node scripts/migrate-vocabulary.js --dry-run",
     "postinstall": "echo 'Installation complete! Run npm run dev to start development.'"
   },
   "dependencies": {
@@ -42,6 +45,7 @@
     "@fortawesome/react-fontawesome": "^0.2.3",
     "@radix-ui/react-slot": "^1.2.3",
     "@shadcn/ui": "^0.0.4",
+    "@types/sqlite3": "^3.1.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.537.0",
@@ -49,6 +53,7 @@
     "openai": "^5.12.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.3.1",
     "zod": "^3.22.4"
   },

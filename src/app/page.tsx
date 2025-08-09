@@ -22,7 +22,7 @@ function LearnPortugueseAppInner(): React.JSX.Element {
   const {
     isInitialized,
     error,
-    loadVocabulary,
+    loadNewWord,
     dismissError
   } = useLearningContext();
 
@@ -46,7 +46,7 @@ function LearnPortugueseAppInner(): React.JSX.Element {
           <h2 className="text-xl font-bold text-red-400 mb-4">Error Loading App</h2>
           <p className="text-neutral-300 mb-4">{error}</p>
           <button
-            onClick={loadVocabulary}
+            onClick={loadNewWord}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
             Try Again

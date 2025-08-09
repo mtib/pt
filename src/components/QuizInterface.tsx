@@ -40,7 +40,7 @@ export const QuizInterface: React.FC = () => {
         if (!currentWord || !isEditable) return;
 
         const timeoutId = setTimeout(() => {
-            if (currentWord.isEnglishToPortuguese) {
+            if (currentWord.direction === 'en-to-pt') {
                 portugueseInputRef.current?.focus();
             } else {
                 englishInputRef.current?.focus();
@@ -112,10 +112,10 @@ export const QuizInterface: React.FC = () => {
                             ref={portugueseInputRef}
                             name="portuguese"
                             type="text"
-                            value={currentWord?.isEnglishToPortuguese ? userInput : currentWord?.targetWord || ''}
+                            value={currentWord?.direction === 'en-to-pt' ? userInput : currentWord?.translation_pt || ''}
                             onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && !!currentWord?.isEnglishToPortuguese)}
-                            disabled={!isEditable || !currentWord?.isEnglishToPortuguese}
+                            className={getInputClassName(isEditable && currentWord?.direction === 'en-to-pt')}
+                            disabled={!isEditable || currentWord?.direction !== 'en-to-pt'}
                             aria-label="Portuguese word input"
                             autoComplete="off"
                         />
@@ -126,10 +126,10 @@ export const QuizInterface: React.FC = () => {
                             ref={englishInputRef}
                             name="english"
                             type="text"
-                            value={currentWord?.isEnglishToPortuguese ? currentWord?.englishWord || '' : userInput}
+                            value={currentWord?.direction === 'en-to-pt' ? currentWord?.translation_en || '' : userInput}
                             onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && !currentWord?.isEnglishToPortuguese)}
-                            disabled={!isEditable || !!currentWord?.isEnglishToPortuguese}
+                            className={getInputClassName(isEditable && currentWord?.direction === 'pt-to-en')}
+                            disabled={!isEditable || currentWord?.direction !== 'pt-to-en'}
                             aria-label="English word input"
                             autoComplete="off"
                         />

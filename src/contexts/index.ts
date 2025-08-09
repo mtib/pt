@@ -2,7 +2,9 @@
  * Context exports for the Portuguese learning application.
  * 
  * @author Portuguese Learning App
- * @version 1.0.0
+ * @version 2.0.0
  */
 
-export { LearningProvider, useLearningContext } from './LearningContext';
+import { LearningProvider, useLearningContext } from './LearningContext';
+
+export { LearningProvider, useLearningContext };
