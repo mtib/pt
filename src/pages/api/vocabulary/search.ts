@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { searchPhrases } from '@/lib/database/operations';
+import { searchPhrasePairs } from '@/lib/database/operations';
 import { withApiAuth } from '@/lib/auth';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,10 +11,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
 
         try {
-            const phrases = await searchPhrases(q);
-            res.status(200).json(phrases);
+            const phrasePairs = await searchPhrasePairs(q);
+            res.status(200).json(phrasePairs);
         } catch (error) {
-            console.error('Error searching phrases:', error);
+            console.error('Error searching phrase pairs:', error);
             res.status(500).json({ message: 'Internal Server Error' });
         }
     } else {

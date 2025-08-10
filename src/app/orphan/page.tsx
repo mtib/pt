@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import AuthGuard from '@/components/AuthGuard';
+import { Navbar } from '@/components/ui/navbar';
 
 export default function OrphanPage() {
     const { authToken } = useAuth();
@@ -40,7 +41,7 @@ export default function OrphanPage() {
     const handleDelete = async (phraseId: number) => {
         if (!authToken) return;
         try {
-            const res = await fetch(`/api/vocabulary/delete?id=${phraseId}`, {
+            const res = await fetch(`/api/vocabulary/phrase/${phraseId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${authToken}` },
             });
@@ -71,6 +72,7 @@ export default function OrphanPage() {
     return (
         <AuthGuard>
             <div className="container mx-auto p-4">
+                <Navbar />
                 <Card className="max-w-2xl mx-auto">
                     <CardHeader>
                         <CardTitle>Orphan Phrases</CardTitle>

@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Combobox } from "@/components/ui/combobox";
 import { useAuth } from '@/contexts/AuthContext';
 import AuthGuard from '@/components/AuthGuard';
+import { Navbar } from '@/components/ui/navbar';
 
 export default function AddPage() {
     const { authToken } = useAuth();
@@ -98,6 +99,7 @@ export default function AddPage() {
     return (
         <AuthGuard>
             <div className="container mx-auto p-4">
+                <Navbar />
                 <Card className="max-w-2xl mx-auto">
                     <CardHeader>
                         <CardTitle>Add Phrase Pair</CardTitle>

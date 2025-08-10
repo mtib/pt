@@ -480,3 +480,83 @@ export async function batchInsertVocabulary(
         }
     });
 }
+
+/**
+ * Get all phrase-phrase pairs by joining through the similarity table.
+ */
+export async function getPhrasePairs(): Promise<{ fromPhrase: DbPhrase; toPhrase: DbPhrase; similarity: number; }[]> {
+    const db = getDatabase();
+    return db.allQuery<{ fromPhrase: DbPhrase; toPhrase: DbPhrase; similarity: number; }>(
+        `SELECT 
+            p1.id AS fromId, p1.phrase AS fromPhrase, p1.language AS fromLanguage,
+            p2.id AS toId, p2.phrase AS toPhrase, p2.language AS toLanguage,
+            s.similarity
+         FROM similarity s
+         JOIN phrases p1 ON s.from_phrase_id = p1.id
+         JOIN phrases p2 ON s.to_phrase_id = p2.id`
+    );
+}
+
+/**
+ * Delete all similarity relationships for a given phrase ID.
+ */
+export async function deleteSimilaritiesForPhrase(fromPhraseId: number, toPhraseId: number): Promise<void> {
+    const db = getDatabase();
+    await db.runQuery(
+        `DELETE FROM similarity WHERE (from_phrase_id = ? AND to_phrase_id = ?) OR (from_phrase_id = ? AND to_phrase_id = ?)`,
+        [fromPhraseId, toPhraseId, toPhraseId, fromPhraseId]
+    );
+}
+
+/**
+ * Search for phrase pairs grouped by category.
+ */
+export async function searchPhrasePairs(query: string): Promise<Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; }[]>> {
+    const db = getDatabase();
+    const searchQuery = `%${query}%`;
+
+    const results = await db.allQuery<{
+        category: string | null;
+        fromPhraseId: number;
+        fromPhrase: string;
+        fromLanguage: string;
+        toPhraseId: number;
+        toPhrase: string;
+        toLanguage: string;
+    }>(
+        `SELECT
+            COALESCE(p1.category, 'Uncategorized') AS category,
+            p1.id AS fromPhraseId,
+            p1.phrase AS fromPhrase,
+            p1.language AS fromLanguage,
+            p2.id AS toPhraseId,
+            p2.phrase AS toPhrase,
+            p2.language AS toLanguage
+         FROM similarity s
+         JOIN phrases p1 ON s.from_phrase_id = p1.id
+         JOIN phrases p2 ON s.to_phrase_id = p2.id
+         WHERE p1.phrase LIKE ? OR p2.phrase LIKE ?
+         ORDER BY p1.category`,
+        [searchQuery, searchQuery]
+    );
+
+    return results.reduce((acc, row) => {
+        const category = row.category;
+        if (!acc[category]) {
+            acc[category] = [];
+        }
+        acc[category].push({
+            fromPhrase: {
+                id: row.fromPhraseId,
+                phrase: row.fromPhrase,
+                language: row.fromLanguage,
+            },
+            toPhrase: {
+                id: row.toPhraseId,
+                phrase: row.toPhrase,
+                language: row.toLanguage,
+            },
+        });
+        return acc;
+    }, {} as Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; }[]>);
+}
