@@ -38,7 +38,6 @@ COPY next.config.ts ./
 COPY tsconfig.json ./
 COPY postcss.config.mjs ./
 COPY eslint.config.mjs ./
-COPY components.json ./
 
 # Copy source files
 COPY src/ ./src/
