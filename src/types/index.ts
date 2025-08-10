@@ -124,6 +124,12 @@ export type Direction = {
     to: SupportedLanguage;
 };
 
+export type CourseLanguages = {
+    native: SupportedLanguage,
+    foreign: SupportedLanguage,
+};
+
+
 /**
  * API error response
  */

@@ -55,20 +55,14 @@ export function useDailyStats() {
             return dailyStats[dateStr] || 0;
         }).reverse();
 
-        const min = Math.min(...last14Days);
         const max = Math.max(...last14Days);
-        const range = max - min || 1;
+        const characters = '▁▂▃▄▅▆▇█';
 
         return last14Days
             .map((count) => {
-                const normalized = (count - min) / range;
-
-                if (normalized >= 0.8) return '█';
-                if (normalized >= 0.6) return '▇';
-                if (normalized >= 0.4) return '▆';
-                if (normalized >= 0.2) return '▅';
-                if (normalized > 0) return '▃';
-                return ' ';
+                const normalized = count * 1.0 / max;
+                const index = Math.min(Math.floor(normalized * characters.length), characters.length - 1);
+                return characters[index] || '?';
             })
             .join('');
     }, [dailyStats]);

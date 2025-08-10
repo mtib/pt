@@ -20,6 +20,7 @@ import {
     StatsResponse,
     VocabularyResponse,
     PhraseWithSimilarity,
+    CourseLanguages,
 } from '@/types';
 import { normalizeText, calculateXP } from '@/utils/vocabulary';
 import { CONFIG, STORAGE_KEYS } from '@/types';
@@ -47,6 +48,8 @@ interface LearningState {
     isInitialized: boolean;
     error: string | null;
     isAuthenticated: boolean;
+
+    course: CourseLanguages;
 
     // Database statistics
     databaseStats: StatsResponse | null;
@@ -95,7 +98,11 @@ interface LearningProviderProps {
     children: ReactNode;
 }
 
-export const LANGUAGES = ['en', 'pt'] as const;
+export const COURSE: CourseLanguages = {
+    native: 'en',
+    foreign: 'pt'
+};
+export const LANGUAGES = Object.values(COURSE);
 
 /**
  * Learning provider component that manages all quiz-related state using database API
@@ -515,6 +522,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         databaseStats,
         dailyStats: dailyStatsDisplay,
         direction,
+        course: COURSE,
 
         // Actions
         handleInputChange,

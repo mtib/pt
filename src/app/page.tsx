@@ -26,7 +26,8 @@ function LearnPortugueseAppInner(): React.JSX.Element {
     isInitialized,
     error,
     loadNewWord,
-    dismissError
+    dismissError,
+    isAuthenticated
   } = useLearningContext();
 
   // Show loading state while initializing
@@ -63,7 +64,7 @@ function LearnPortugueseAppInner(): React.JSX.Element {
       <QuizInterface />
 
       {/* Explanation Panel */}
-      <ExplanationPanel />
+      {isAuthenticated && <ExplanationPanel />}
 
       {/* Error Display */}
       {error && (
