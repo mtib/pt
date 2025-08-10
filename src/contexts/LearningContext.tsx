@@ -374,7 +374,14 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     }, [currentWord, addToPractice]);
 
     useEffect(() => {
-        if (result === 'correct' || result === 'revealed') {
+        if (result === 'correct') {
+            const timeout = setTimeout(() => {
+                loadNextWord();
+            }, CONFIG.CORRECT_DELAY);
+            return () => {
+                clearTimeout(timeout);
+            };
+        } else if (result === 'revealed') {
             const timeout = setTimeout(() => {
                 loadNextWord();
             }, CONFIG.REVEAL_DELAY);

@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 
+export const linkBase = "dark:text-blue-400 text-blue-600 hover:underline";
+
 export function Navbar() {
   const pathname = usePathname();
 
-  const linkBase = "dark:text-blue-400 text-blue-600 hover:underline";
   const active = "font-bold";
 
   return (

@@ -63,8 +63,8 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = () => {
         <ExplanationPanelWrapper>
             <article>
                 {/* Word Header */}
-                <header className="mb-4 sm:mb-6 text-lg sm:text-2xl">
-                    <div className="font-bold mb-1">
+                <header className="mb-4 text-lg">
+                    <div className="font-bold mb-1 flex flex-row">
                         <span className='font-bold'>
                             {explanation.foreignPhrase}
                         </span>
@@ -74,7 +74,7 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = () => {
                     </div>
 
                     {/* Pronunciation */}
-                    <div className="text-xs sm:text-sm">
+                    <div className="text-sm">
                         <span>{explanation.pronunciationIPA}</span>
                         {explanation.pronunciationEnglish && (
                             <span className="ml-2 text-neutral-500 dark:text-neutral-400 font-light">{explanation.pronunciationEnglish}</span>

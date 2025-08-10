@@ -121,8 +121,8 @@ export default function RemovePage() {
                                     {(Array.isArray(pairs) ? pairs : []).map(({ fromPhrase, toPhrase }) => (
                                         <div key={`${fromPhrase.id}-${toPhrase.id}`} className="flex flex-row items-center justify-between p-2 border border-neutral-200 dark:border-neutral-800 rounded">
                                             <div className='flex flex-row justify-between flex-grow mr-8'>
-                                                <span>{fromPhrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{fromPhrase.language} ({fromPhrase.id})</span></span>
-                                                <span>{toPhrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{toPhrase.language} ({toPhrase.id})</span></span>
+                                                <span>{fromPhrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{fromPhrase.language}</span></span>
+                                                <span>{toPhrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{toPhrase.language}</span></span>
                                             </div>
                                             <Button variant="destructive" size="sm" onClick={() => handleDeletePair(fromPhrase.id, toPhrase.id)}>
                                                 Delete

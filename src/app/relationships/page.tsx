@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AuthGuard from '@/components/AuthGuard';
-import { Navbar } from '@/components/ui/navbar';
+import { linkBase, Navbar } from '@/components/ui/navbar';
 import { Phrase, PhraseWithSimilarityAndMetadata, SupportedLanguage, toFullLanguageName } from '@/types';
 import { Input } from '@/components/ui/input';
 import _ from 'lodash';
 import { normalizeText } from '@/utils/vocabulary';
+import { cn } from '@/lib/utils';
 
 export default function OrphanPage() {
     const { authToken } = useAuth();
@@ -130,10 +131,10 @@ export default function OrphanPage() {
                                 <div className='text-lg font-semibold mb-2'>Related Phrases</div>
                                 {_(phraseData.relatedPhrases).groupBy(p => p.language).map((values, group) => (
                                     <div key={group}>
-                                        <div className='text-md font-semibold mt-2'>{toFullLanguageName(group as SupportedLanguage)}</div>
+                                        <div className='text-md font-semibold mt-3 mb-1'>{toFullLanguageName(group as SupportedLanguage)}</div>
                                         {values.map((relatedPhrase) => (
-                                            <div key={relatedPhrase.id} className='flex flex-row gap-3'>
-                                                <span>{relatedPhrase.phrase}</span>
+                                            <div key={relatedPhrase.id} className='flex flex-row gap-2'>
+                                                <span className={cn('cursor-pointer', linkBase)} onClick={() => { setSelectedPhrase(relatedPhrase); setSearchValue(relatedPhrase.phrase); setPhraseOptions([]); }}>{relatedPhrase.phrase}</span>
                                                 {relatedPhrase.category && <span className='font-light text-neutral-500 dark:text-neutral-400'>{relatedPhrase.category}</span>}
                                             </div>))}
                                     </div>
