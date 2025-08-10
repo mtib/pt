@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -96,6 +96,13 @@ export default function AddPage() {
         }
     };
 
+    const options = useMemo(() => {
+        if (categories.find(cat => cat.value === category) || !category) {
+            return categories;
+        }
+        return [...categories, { value: category, label: category }];
+    }, [categories, category]);
+
     return (
         <AuthGuard>
             <div className="container mx-auto p-4">
@@ -119,10 +126,11 @@ export default function AddPage() {
                                 required
                             />
                             <Combobox
-                                items={categories}
+                                items={options}
                                 value={category}
                                 onChange={setCategory}
                                 placeholder="Select or create category..."
+                                allowCustomValue
                             />
                             <Button type="submit" disabled={isLoading}>
                                 {isLoading ? 'Adding...' : 'Add Phrase Pair'}
