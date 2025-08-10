@@ -11,7 +11,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useLearningContext } from '@/contexts';
 import Link from 'next/link';
-import { toFullLanguageName } from '@/types';
+import { COURSES, toFullLanguageName } from '@/types';
+import { courseToValue, valueToCourse } from '@/lib/utils';
 
 /**
  * Main quiz interface component
@@ -33,9 +34,10 @@ export const QuizInterface: React.FC = () => {
         handleNext,
         handleSpeak,
         handleExplain,
+        setCourse,
     } = useLearningContext();
     const foreignInputRef = useRef<HTMLInputElement>(null);
-    const englishInputRef = useRef<HTMLInputElement>(null);
+    const nativeInputRef = useRef<HTMLInputElement>(null);
 
     // Auto-focus the correct input field
     useEffect(() => {
@@ -45,7 +47,7 @@ export const QuizInterface: React.FC = () => {
             if (direction?.from == 'en') {
                 foreignInputRef.current?.focus();
             } else {
-                englishInputRef.current?.focus();
+                nativeInputRef.current?.focus();
             }
         }, 100);
 
@@ -101,106 +103,121 @@ export const QuizInterface: React.FC = () => {
   `;
 
     return (
-        <div className="py-8 wide:py-0 wide:flex-grow flex flex-col justify-center items-center h-full relative">
-            <div className="p-3 border-neutral-700 overflow-x-hidden flex flex-col gap-8">
-                <div className="flex flex-col">
-                    <span className='text-neutral-400'>{toFullLanguageName(course.native)}</span>
-                    <input
-                        ref={englishInputRef}
-                        type="text"
-                        value={direction?.from === 'en' ? currentWord?.sourcePhrase?.phrase || '' : userInput}
-                        onChange={(e) => handleInputChange(e.target.value)}
-                        className={getInputClassName(isEditable && direction?.from !== 'en')}
-                        disabled={!isEditable || direction?.from === 'en'}
-                        aria-label="English word input"
-                        autoComplete="off"
-                    />
-                </div>
-                <div className='flex flex-col'>
-                    <span className='text-neutral-400'>{toFullLanguageName(course.foreign)}</span>
-                    <input
-                        ref={foreignInputRef}
-                        type="text"
-                        value={direction?.from === 'pt' ? currentWord?.sourcePhrase?.phrase || '' : userInput}
-                        onChange={(e) => handleInputChange(e.target.value)}
-                        className={getInputClassName(isEditable && direction?.from !== 'pt')}
-                        disabled={!isEditable || direction?.from === 'pt'}
-                        aria-label="Portuguese word input"
-                        autoComplete="off"
-                    />
-                </div>
-                <div className='flex flex-row justify-between gap-4'>
-                    <div className='flex flex-row gap-1 items-end'>
-                        <button
-                            onClick={handleNext}
-                            className={getButtonClassName()}
-                            title="Next word (N)"
-                            aria-label="Next word"
-                        >
-                            Next
-                        </button>
-                        <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">N</kbd>
-                    </div>
-                    <div className='flex flex-row gap-1 items-end'>
-                        <button
-                            onClick={handleShow}
-                            className={getButtonClassName()}
-                            title="Show answer (S)"
-                            aria-label="Show answer"
-                        >
-                            Show
-                        </button>
-                        <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">S</kbd>
-                    </div>
-                    <div className='flex flex-row gap-1 items-end'>
-                        <button
-                            onClick={handleSpeak}
-                            disabled={!currentWord}
-                            className={getButtonClassName(!currentWord)}
-                            title="Speak word (Space)"
-                            aria-label="Speak word"
-                        >
-                            Speak
-                        </button>
-                        <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">␣</kbd>
-                    </div>
-                    {isAuthenticated && (
-                        <div className='flex flex-row gap-1 items-end'>
-                            <button
-                                onClick={handleExplain}
-                                disabled={!currentWord || loadingExplanation || !isAuthenticated}
-                                className={getButtonClassName(!currentWord || loadingExplanation || !isAuthenticated)}
-                                title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}
-                                aria-label="Explain word"
-                            >
-                                {loadingExplanation ? 'Loading...' : 'Explain'}
-                            </button>
-                            <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">E</kbd>
-                        </div>
-                    )}
-                    {isAuthenticated && <Link href="/add" className={getButtonClassName(!currentWord || !isAuthenticated)}>
-                        Add
-                    </Link>}
-                </div>
-                <div className='flex flex-row justify-center items-center gap-4'>
-                    <div className="flex flex-row gap-2 justify-center bg-white dark:bg-black p-2 m-2 rounded-md border border-neutral-400 dark:border-neutral-600">
-                        <pre>
-                            <code>{dailyStats.histogram}</code>
-                        </pre>
-                        <span>{dailyStats.todayCount}</span>
-                        <span className={
-                            dailyStats.diff > 0 ? 'dark:text-green-400 text-green-800' : 'dark:text-red-400 text-red-800'
-                        }>{dailyStats.diff > 0 ? `+${dailyStats.diff}` : dailyStats.diff}</span>
-                    </div>
-                    <div className='flex flex-row gap-1'>
-                        <span className='font-bold'>{vocabularyXP}</span>
-                        <span>XP</span>
-                    </div>
+        <div className='wide:flex-grow'>
+            <div className='pt-3'>
+                <div className="inline m-3 p-1 dark:bg-neutral-800 dark:text-neutral-400 bg-neutral-200 text-neutral-700 rounded">
+                    <select name="course" id="course-select" value={courseToValue(course)} onChange={(e) => setCourse(valueToCourse(e.target.value))}>
+                        {
+                            COURSES.map(courseToValue).map((c) => (
+                                <option key={c} value={c}>
+                                    {c}
+                                </option>
+                            ))
+                        }
+                    </select>
                 </div>
             </div>
-            <div className='absolute flex flex-col justify-end bottom-0 left-0 right-0 items-center pb-4'>
-                <div className='text-neutral-400 text-sm'>
-                    {result}
+            <div className="py-8 wide:py-0 flex flex-col justify-center items-center h-full relative">
+                <div className="p-3 border-neutral-700 overflow-x-hidden flex flex-col gap-8">
+                    <div className="flex flex-col">
+                        <span className='text-neutral-400'>{toFullLanguageName(course.native)}</span>
+                        <input
+                            ref={nativeInputRef}
+                            type="text"
+                            value={direction?.from === course.native ? currentWord?.sourcePhrase?.phrase || '' : userInput}
+                            onChange={(e) => handleInputChange(e.target.value)}
+                            className={getInputClassName(isEditable && direction?.from !== course.native)}
+                            disabled={!isEditable || direction?.from === course.native}
+                            aria-label={`${toFullLanguageName(course.native)} word input`}
+                            autoComplete="off"
+                        />
+                    </div>
+                    <div className='flex flex-col'>
+                        <span className='text-neutral-400'>{toFullLanguageName(course.foreign)}</span>
+                        <input
+                            ref={foreignInputRef}
+                            type="text"
+                            value={direction?.from === course.foreign ? currentWord?.sourcePhrase?.phrase || '' : userInput}
+                            onChange={(e) => handleInputChange(e.target.value)}
+                            className={getInputClassName(isEditable && direction?.from !== course.foreign)}
+                            disabled={!isEditable || direction?.from === course.foreign}
+                            aria-label={`${toFullLanguageName(course.foreign)} word input`}
+                            autoComplete="off"
+                        />
+                    </div>
+                    <div className='flex flex-row justify-between gap-4'>
+                        <div className='flex flex-row gap-1 items-end'>
+                            <button
+                                onClick={handleNext}
+                                className={getButtonClassName()}
+                                title="Next word (N)"
+                                aria-label="Next word"
+                            >
+                                Next
+                            </button>
+                            <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">N</kbd>
+                        </div>
+                        <div className='flex flex-row gap-1 items-end'>
+                            <button
+                                onClick={handleShow}
+                                className={getButtonClassName()}
+                                title="Show answer (S)"
+                                aria-label="Show answer"
+                            >
+                                Show
+                            </button>
+                            <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">S</kbd>
+                        </div>
+                        <div className='flex flex-row gap-1 items-end'>
+                            <button
+                                onClick={handleSpeak}
+                                disabled={!currentWord}
+                                className={getButtonClassName(!currentWord)}
+                                title="Speak word (Space)"
+                                aria-label="Speak word"
+                            >
+                                Speak
+                            </button>
+                            <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">␣</kbd>
+                        </div>
+                        {isAuthenticated && (
+                            <div className='flex flex-row gap-1 items-end'>
+                                <button
+                                    onClick={handleExplain}
+                                    disabled={!currentWord || loadingExplanation || !isAuthenticated}
+                                    className={getButtonClassName(!currentWord || loadingExplanation || !isAuthenticated)}
+                                    title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}
+                                    aria-label="Explain word"
+                                >
+                                    Explain
+                                </button>
+                                <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">E</kbd>
+                            </div>
+                        )}
+                        {isAuthenticated && <Link href="/add" className={getButtonClassName(!currentWord || !isAuthenticated)}>
+                            Add
+                        </Link>}
+                    </div>
+                    <div className='flex flex-row justify-center items-center gap-4'>
+                        <div className="flex flex-row gap-2 justify-center bg-white dark:bg-black p-2 m-2 rounded-md border border-neutral-400 dark:border-neutral-600">
+                            <pre>
+                                <code>{dailyStats.histogram}</code>
+                            </pre>
+                            <span>{dailyStats.todayCount}</span>
+                            <span className={
+                                dailyStats.diff > 0 ? 'dark:text-green-400 text-green-800' : 'dark:text-red-400 text-red-800'
+                            }>{dailyStats.diff > 0 ? `+${dailyStats.diff}` : dailyStats.diff}</span>
+                        </div>
+                        <div className='flex flex-row gap-1'>
+                            <span className='font-bold'>{vocabularyXP}</span>
+                            <span>XP</span>
+                        </div>
+                    </div>
+                </div>
+                <div className='absolute flex flex-col justify-end bottom-0 left-0 right-0 items-center pb-4'>
+                    <div className='text-neutral-400 text-sm'>
+                        {result}
+                    </div>
                 </div>
             </div>
         </div>

@@ -15,7 +15,7 @@ import {
     SQL_QUERIES,
     PhrasePairImport
 } from './config';
-import { Phrase, PhraseWithSimilarity, SupportedLanguage } from '@/types';
+import { Phrase, PhraseWithSimilarity, PhraseWithSimilarityAndMetadata, SupportedLanguage } from '@/types';
 import _ from 'lodash';
 
 /**
@@ -444,6 +444,17 @@ export async function batchInsertVocabulary(
             }
         }
     });
+}
+
+export async function getAllSimilaritiesForPhrase(phraseId: number): Promise<PhraseWithSimilarityAndMetadata[]> {
+    const db = getDatabase();
+    return db.allQuery(
+        `SELECT p.id, p.phrase, p.language, c.name as category, s.similarity FROM phrases p 
+        JOIN similarity s ON p.id = s.to_phrase_id
+        LEFT JOIN categories c ON c.id = s.category_id
+        WHERE s.from_phrase_id = ?`,
+        [phraseId]
+    );
 }
 
 /**

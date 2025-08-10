@@ -21,12 +21,14 @@ import {
     VocabularyResponse,
     PhraseWithSimilarity,
     CourseLanguages,
+    COURSES
 } from '@/types';
 import { normalizeText, calculateXP } from '@/utils/vocabulary';
 import { CONFIG, STORAGE_KEYS } from '@/types';
 import { useDailyStats, useLocalStorage } from '@/hooks';
-import { speak } from '@/lib/utils';
+import { courseToValue, speak } from '@/lib/utils';
 import DatabaseVocabularyApi from '@/lib/database-api-client';
+import _ from 'lodash';
 
 /**
  * Learning context state interface
@@ -79,6 +81,9 @@ interface LearningActions {
     loadPracticeWord: () => Promise<void>;
     validateAnswer: (answer: string) => PhraseWithSimilarity | null;
     dismissError: () => void;
+
+    // Course actions
+    setCourse: (course: CourseLanguages) => void;
 }
 
 /**
@@ -98,21 +103,17 @@ interface LearningProviderProps {
     children: ReactNode;
 }
 
-export const COURSE: CourseLanguages = {
-    native: 'en',
-    foreign: 'pt'
-};
-export const LANGUAGES = Object.values(COURSE);
-
 /**
  * Learning provider component that manages all quiz-related state using database API
  */
 export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) => {
     // Simple local state management (hooks can be added later)
-    const [vocabularyXP, setVocabularyXP] = useLocalStorage(STORAGE_KEYS.VOCABULARY_XP, 0);
-    const [practiceWordIds, setPracticeWordIds] = useLocalStorage<PracticePhrase[]>(STORAGE_KEYS.PRACTICE_WORDS, []);
-    const hasPracticeWords = useMemo(() => practiceWordIds.length > 0, [practiceWordIds.length]);
     const lastQuestionRevealTimeRef = useRef<number>(0);
+    const [course, setCourse] = useLocalStorage<CourseLanguages>(STORAGE_KEYS.COURSE, COURSES[0]);
+    const [vocabularyXP, setVocabularyXP] = useLocalStorage<Record<string, number>>(STORAGE_KEYS.VOCABULARY_XP, {});
+    const [practiceWordIds, setPracticeWordIds] = useLocalStorage<Record<string, PracticePhrase[]>>(STORAGE_KEYS.PRACTICE_WORDS, {});
+    const hasPracticeWords = useMemo(() => (practiceWordIds[courseToValue(course)] || []).length > 0, [practiceWordIds, course]);
+    const languages = useMemo(() => [course.native, course.foreign], [course]);
 
     // Get auth token from the new AuthContext
     const { authToken } = useAuth();
@@ -126,19 +127,23 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         incrementTodayCount,
     } = useDailyStats();
 
-    const addXP = useCallback((xp: number) => setVocabularyXP(prev => prev + xp), [setVocabularyXP]);
+    const addXP = useCallback((xp: number) => setVocabularyXP(prev => {
+        return { ...prev, [courseToValue(course)]: (prev[courseToValue(course)] || 0) + xp };
+    }), [setVocabularyXP, course]);
 
     const addToPractice = useCallback((vocabularyResponse: VocabularyResponse) => {
         const sourcePhrase = vocabularyResponse.sourcePhrase;
         setPracticeWordIds(prev => {
-            const exists = prev.find(w => w.phraseId === sourcePhrase.id);
+            const exists = (prev[courseToValue(course)] || []).find(w => w.phraseId === sourcePhrase.id);
             if (exists) {
                 // Reset correctCount to 0 if it already exists
-                return prev.map(w =>
-                    w.phraseId === sourcePhrase.id
-                        ? { ...w, correctCount: 0, lastPracticed: Date.now() }
-                        : w
-                );
+                return {
+                    ...prev, [courseToValue(course)]: (prev[courseToValue(course)] || []).map(w =>
+                        w.phraseId === sourcePhrase.id
+                            ? { ...w, correctCount: 0, lastPracticed: Date.now() }
+                            : w
+                    )
+                };
             } else {
                 const newMetadata: PracticePhrase = {
                     phraseId: sourcePhrase.id,
@@ -152,7 +157,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
                 if (targetWords && targetWords.length >= 1) {
                     const mostSimilar = targetWords[0];
 
-                    if (mostSimilar && !prev.find(w => w.phraseId === mostSimilar.id)) {
+                    if (mostSimilar && !(prev[courseToValue(course)] || []).find(w => w.phraseId === mostSimilar.id)) {
                         practiceWordsToAdd.push({
                             phraseId: mostSimilar.id,
                             correctCount: 0,
@@ -160,31 +165,29 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
                     }
                 }
 
-                return [...prev, ...practiceWordsToAdd];
+                return { ...prev, [courseToValue(course)]: [...(prev[courseToValue(course)] || []), ...practiceWordsToAdd] };
             }
         });
-    }, [setPracticeWordIds]);
+    }, [setPracticeWordIds, course]);
 
     const incrementCorrectCount = useCallback((phraseId: number) => {
         setPracticeWordIds(prev => {
-            if (prev.find(w => w.phraseId === phraseId) === undefined) {
+            if ((prev[courseToValue(course)] || []).find(w => w.phraseId === phraseId) === undefined) {
                 return prev;
             }
-            return prev.map(w => w.phraseId === phraseId
-                ? { ...w, correctCount: w.correctCount + 1 }
-                : w
-            );
+            return {
+                ...prev, [courseToValue(course)]: _.compact((prev[courseToValue(course)] || []).map(w => {
+                    if (w.phraseId != phraseId) {
+                        return w;
+                    }
+                    if (w.correctCount >= CONFIG.PRACTICE_MAX_CORRECT_COUNT) {
+                        return null;
+                    }
+                    return { ...w, correctCount: w.correctCount + 1 };
+                }))
+            };
         });
-    }, [setPracticeWordIds]);
-
-    // Clean up practice words that have reached max correct count
-    useEffect(() => {
-        setPracticeWordIds(prev => {
-            const filtered = prev.filter(w => w.correctCount < CONFIG.PRACTICE_MAX_CORRECT_COUNT);
-            // Only update if the filter actually removed items
-            return filtered.length !== prev.length ? filtered : prev;
-        });
-    }, [practiceWordIds, setPracticeWordIds]);
+    }, [setPracticeWordIds, course]);
 
     // Local component state
     const [currentWord, setCurrentWord] = useState<VocabularyResponse | null>(null);
@@ -214,7 +217,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         try {
             setError(null);
 
-            const wordData = await DatabaseVocabularyApi.getRandomWord(LANGUAGES);
+            const wordData = await DatabaseVocabularyApi.getRandomWord(languages);
 
             if (!wordData) {
                 throw new Error('No words available from database');
@@ -230,7 +233,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             console.error('Failed to load word:', err);
             setError('Failed to load word from database. Please try again.');
         }
-    }, []);
+    }, [languages]);
 
     /**
      * Loads a practice word by ID from the database API
@@ -238,23 +241,24 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     const loadPracticeWord = useCallback(async () => {
         try {
             setError(null);
+            const coursePracticeWords = practiceWordIds[courseToValue(course)] || [];
 
-            if (practiceWordIds.length === 0) {
+            if (coursePracticeWords.length === 0) {
                 // Fall back to loading a new random word
                 await loadRandomWord();
                 return;
             }
 
             // Sample a random practice word ID from the available practice words
-            const randomIndex = Math.floor(Math.random() * practiceWordIds.length);
-            const practiceWordMetadata = practiceWordIds[randomIndex];
+            const randomIndex = Math.floor(Math.random() * coursePracticeWords.length);
+            const practiceWordMetadata = coursePracticeWords[randomIndex];
 
             // Fetch the full word data from the API
-            const wordData = await DatabaseVocabularyApi.getPracticeWord(practiceWordMetadata.phraseId, LANGUAGES);
+            const wordData = await DatabaseVocabularyApi.getPracticeWord(practiceWordMetadata.phraseId, languages);
 
             if (!wordData) {
                 // Remove the word from the practice list if not found
-                setPracticeWordIds(prev => prev.filter(w => w.phraseId !== practiceWordMetadata.phraseId));
+                setPracticeWordIds(prev => ({ ...prev, [courseToValue(course)]: (prev[courseToValue(course)] || []).filter(w => w.phraseId !== practiceWordMetadata.phraseId) }));
                 // Fall back to loading a new random word
                 await loadRandomWord();
                 return;
@@ -271,7 +275,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             console.error('Failed to load practice word:', err);
             setError('Failed to load practice word from database. Please try again.');
         }
-    }, [practiceWordIds, loadRandomWord, setPracticeWordIds]);
+    }, [course, languages, practiceWordIds, loadRandomWord, setPracticeWordIds]);
 
     /**
      * Validates an answer using local logic with acceptable answers
@@ -292,7 +296,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
      * Chooses whether to load a practice word or a new random word
      */
     const loadNextWord = useCallback(async () => {
-        const practiceChance = CONFIG.BASE_PRACTICE_CHANCE + (0.9 - CONFIG.BASE_PRACTICE_CHANCE) * (1 - Math.exp(-practiceWordIds.length / 8));
+        const practiceChance = CONFIG.BASE_PRACTICE_CHANCE + (0.9 - CONFIG.BASE_PRACTICE_CHANCE) * (1 - Math.exp(-(practiceWordIds[courseToValue(course)] || []).length / 8));
 
         const shouldUsePractice = hasPracticeWords &&
             Math.random() < practiceChance;
@@ -302,7 +306,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         } else {
             await loadRandomWord();
         }
-    }, [hasPracticeWords, practiceWordIds.length, loadPracticeWord, loadRandomWord]);
+    }, [hasPracticeWords, practiceWordIds, loadPracticeWord, loadRandomWord, course]);
 
     useEffect(() => {
         setResult('incorrect');
@@ -467,12 +471,13 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     const loadNextRef = useRef(null as (() => Promise<void>) | null);
 
     loadNextRef.current = async () => {
-        if (practiceWordIds.length > 0) {
+        if ((practiceWordIds[courseToValue(course)] || []).length > 0) {
             await loadPracticeWord();
         } else {
             await loadRandomWord();
         }
     };
+
     /**
      * Initialize the application by loading database stats and first word
      */
@@ -496,20 +501,20 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     // Initialize on provider mount
     useEffect(() => {
         initialize();
-    }, [initialize]);
+    }, [course, initialize]);
 
     // Prepare daily statistics for display
-    const dailyStatsDisplay = {
+    const dailyStatsDisplay = useMemo(() => ({
         todayCount: getTodayCount(),
         diff: getDaysDiff(),
         histogram: getLast14DaysHistogram(),
-        practiceListLength: practiceWordIds.length,
-    };
+        practiceListLength: (practiceWordIds[courseToValue(course)] || []).length,
+    }), [getTodayCount, getDaysDiff, getLast14DaysHistogram, practiceWordIds, course]);
 
     // Context value
     const contextValue: LearningContextType = {
         // State
-        vocabularyXP,
+        vocabularyXP: vocabularyXP[courseToValue(course)] || 0,
         currentWord,
         userInput,
         result,
@@ -522,7 +527,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         databaseStats,
         dailyStats: dailyStatsDisplay,
         direction,
-        course: COURSE,
+        course,
 
         // Actions
         handleInputChange,
@@ -534,6 +539,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         loadPracticeWord,
         validateAnswer,
         dismissError,
+        setCourse,
     };
 
     return (

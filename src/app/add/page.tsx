@@ -9,16 +9,20 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import AuthGuard from '@/components/AuthGuard';
 import { Navbar } from '@/components/ui/navbar';
+import { CourseLanguages, COURSES, toFullLanguageName } from '@/types';
+import { courseToValue, valueToCourse } from '@/lib/utils';
+import { useLocalStorage } from '@/hooks';
 
 export default function AddPage() {
     const { authToken } = useAuth();
     const { toast } = useToast();
-    const [portuguese, setPortuguese] = useState('');
-    const [english, setEnglish] = useState('');
+    const [foreignPhrase, setForeignPhrase] = useState('');
+    const [nativePhrase, setNativePhrase] = useState('');
     const [category, setCategory] = useState('');
     const [categories, setCategories] = useState<{ value: string; label: string; }[]>([]);
     const [newCategory, setNewCategory] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [course, setCourse] = useLocalStorage<CourseLanguages>("edit-course", COURSES[0]);
 
     useEffect(() => {
         async function fetchCategories() {
@@ -47,7 +51,7 @@ export default function AddPage() {
 
     const handleSubmitPhrase = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!portuguese || !english || !authToken) {
+        if (!foreignPhrase || !nativePhrase || !authToken) {
             toast({
                 title: "Error",
                 description: "Portuguese and English phrases are required.",
@@ -65,11 +69,11 @@ export default function AddPage() {
                 },
                 body: JSON.stringify({
                     data: {
-                        phrase1: portuguese,
-                        phrase2: english,
-                        language1: 'pt',
-                        language2: 'en',
-                        similarity: 1.0,
+                        phrase1: foreignPhrase,
+                        phrase2: nativePhrase,
+                        language1: course.foreign,
+                        language2: course.native,
+                        similarity: 0.95,
                         categoryId: category ? parseInt(category) : undefined
                     }
                 })
@@ -79,9 +83,8 @@ export default function AddPage() {
                     title: "Success",
                     description: "Phrase pair added successfully.",
                 });
-                setPortuguese('');
-                setEnglish('');
-                setCategory('');
+                setForeignPhrase('');
+                setNativePhrase('');
             } else {
                 const error = await res.json();
                 toast({
@@ -160,18 +163,35 @@ export default function AddPage() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmitPhrase} className="space-y-4 flex flex-col">
-                            <Input
-                                placeholder="Portuguese"
-                                value={portuguese}
-                                onChange={(e) => setPortuguese(e.target.value)}
-                                required
-                            />
-                            <Input
-                                placeholder="English"
-                                value={english}
-                                onChange={(e) => setEnglish(e.target.value)}
-                                required
-                            />
+                            <select name="course" id="course-select" value={courseToValue(course)} onChange={(e) => setCourse(valueToCourse(e.target.value))}
+                                className="w-full h-10 rounded-md border border-neutral-200 dark:border-neutral-800 dark:bg-neutral-900 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                {
+                                    COURSES.map((c) => (
+                                        <option key={courseToValue(c)} value={courseToValue(c)}>
+                                            {`${toFullLanguageName(c.native)} - ${toFullLanguageName(c.foreign)}`}
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                            <div>
+                                <div className='text-neutral-600 dark:text-neutral-400'>{toFullLanguageName(course.native)}</div>
+                                <Input
+                                    placeholder={toFullLanguageName(course.native) + " phrase"}
+                                    value={nativePhrase}
+                                    onChange={(e) => setNativePhrase(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <div className='text-neutral-600 dark:text-neutral-400'>{toFullLanguageName(course.foreign)}</div>
+                                <Input
+                                    placeholder={toFullLanguageName(course.foreign) + " phrase"}
+                                    value={foreignPhrase}
+                                    onChange={(e) => setForeignPhrase(e.target.value)}
+                                    required
+                                />
+                            </div>
                             <select
                                 id="category"
                                 className="w-full h-10 rounded-md border border-neutral-200 dark:border-neutral-800 dark:bg-neutral-900 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

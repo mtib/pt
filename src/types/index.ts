@@ -124,11 +124,13 @@ export type Direction = {
     to: SupportedLanguage;
 };
 
-export type CourseLanguages = {
-    native: SupportedLanguage,
-    foreign: SupportedLanguage,
-};
 
+export const COURSES = [
+    { native: 'en', foreign: 'pt' },
+    { native: 'en', foreign: 'de' },
+] as const;
+
+export type CourseLanguages = typeof COURSES[number];
 
 /**
  * API error response
@@ -144,6 +146,7 @@ export const STORAGE_KEYS = {
     // Practice tracking (local)
     VOCABULARY_XP: 'vocabularyXP',
     PRACTICE_WORDS: 'practiceWords',
+    COURSE: 'course',
 
     // Daily statistics
     DAILY_STATS: 'pt-daily-stats',
@@ -170,3 +173,7 @@ export const CONFIG = {
     /** Base practice chance */
     BASE_PRACTICE_CHANCE: 0.3,
 } as const;
+
+export interface PhraseWithSimilarityAndMetadata extends PhraseWithSimilarity {
+    category: string | null;
+}

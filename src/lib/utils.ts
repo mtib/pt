@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import { Phrase } from "@/types";
+import { CourseLanguages, Phrase } from "@/types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -47,3 +47,10 @@ export function speak(phrase: Phrase) {
     speechSynthesis.speak(utterance);
   }
 }
+
+
+export const courseToValue = (c: CourseLanguages) => `${c.native}-${c.foreign}`;
+export const valueToCourse = (value: string): CourseLanguages => {
+  const [native, foreign] = value.split('-');
+  return { native, foreign } as CourseLanguages;
+};

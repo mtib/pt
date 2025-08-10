@@ -86,7 +86,7 @@ export default function OrphanPage() {
                                 <div className="space-y-2">
                                     {orphans.map((phrase) => (
                                         <div key={phrase.id} className="flex items-center justify-between p-2 border rounded border-neutral-200 dark:border-neutral-800">
-                                            <span>{phrase.phrase} ({phrase.language})</span>
+                                            <span>{phrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{phrase.language}</span></span>
                                             <Button variant="destructive" size="sm" onClick={() => handleDelete(phrase.id)}>
                                                 Delete
                                             </Button>

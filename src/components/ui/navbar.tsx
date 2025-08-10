@@ -18,6 +18,9 @@ export function Navbar() {
             <Link href="/add" className={`${linkBase} ${pathname === '/add' ? active : ''}`}>
               Add
             </Link>
+            <Link href="/relationships" className={`${linkBase} ${pathname === '/relationships' ? active : ''}`}>
+              Relationships
+            </Link>
             <Link href="/remove" className={`${linkBase} ${pathname === '/remove' ? active : ''}`}>
               Remove
             </Link>
