@@ -50,13 +50,12 @@ export default function RemovePage() {
     const handleDeletePair = async (phrase1Id: number, phrase2Id: number) => {
         if (!authToken) return;
         try {
-            const res = await fetch(`/api/vocabulary/deletePair`, {
-                method: 'POST',
+            const res = await fetch(`/api/vocabulary/deletePair?phrase1=${phrase1Id}&phrase2=${phrase2Id}`, {
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${authToken}`
                 },
-                body: JSON.stringify({ phrase1Id, phrase2Id })
             });
             if (res.ok) {
                 toast({
@@ -65,7 +64,12 @@ export default function RemovePage() {
                 });
                 setSearchResults((prev) => {
                     const updated = { ...prev };
-                    delete updated[`${phrase1Id}-${phrase2Id}`];
+                    Object.keys(updated).forEach(category => {
+                        updated[category] = updated[category].filter(pair =>
+                            !(pair.fromPhrase.id === phrase1Id && pair.toPhrase.id === phrase2Id)
+                            && !(pair.fromPhrase.id === phrase2Id && pair.toPhrase.id === phrase1Id)
+                        );
+                    });
                     return updated;
                 });
             } else {

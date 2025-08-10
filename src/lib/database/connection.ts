@@ -141,6 +141,8 @@ class DatabaseManager {
         // Create tables using direct database calls to avoid circular dependency
         console.log("- phrases");
         await this.runQueryDirect(SQL_QUERIES.CREATE_PHRASES_TABLE);
+        console.log("- categories");
+        await this.runQueryDirect(SQL_QUERIES.CREATE_CATEGORIES_TABLE);
         console.log("- similarity");
         await this.runQueryDirect(SQL_QUERIES.CREATE_SIMILARITY_TABLE);
 

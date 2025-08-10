@@ -9,6 +9,8 @@
  */
 
 import React from 'react';
+import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LoadingSpinnerProps {
     /** Size of the spinner */
@@ -25,41 +27,38 @@ interface LoadingSpinnerProps {
  * Loading spinner component with customizable appearance
  */
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
-    size = 'md',
-    color = 'primary',
-    text,
-    className = '',
+  size = 'md',
+  color = 'primary',
+  text,
+  className = '',
 }) => {
-    const sizeClasses = {
-        sm: 'w-4 h-4',
-        md: 'w-6 h-6',
-        lg: 'w-8 h-8',
-    };
+  const sizeMap: Record<NonNullable<LoadingSpinnerProps['size']>, number> = {
+    sm: 16,
+    md: 20,
+    lg: 24,
+  };
 
-    const colorClasses = {
-        primary: 'border-blue-500 border-t-transparent',
-        white: 'border-white border-t-transparent',
-        neutral: 'border-neutral-400 border-t-transparent',
-    };
+  const colorClass: Record<NonNullable<LoadingSpinnerProps['color']>, string> = {
+    primary: 'text-blue-500',
+    white: 'text-white',
+    neutral: 'text-neutral-400',
+  };
 
-    return (
-        <div className={`flex items-center justify-center ${className}`}>
-            <div className="flex flex-col items-center space-y-2">
-                <div
-                    className={`
-            ${sizeClasses[size]} 
-            ${colorClasses[color]}
-            border-2 rounded-full animate-spin
-          `}
-                    role="status"
-                    aria-label="Loading"
-                />
-                {text && (
-                    <span className="text-sm text-neutral-400" aria-live="polite">
-                        {text}
-                    </span>
-                )}
-            </div>
-        </div>
-    );
+  return (
+    <div className={cn('flex items-center justify-center', className)}>
+      <div className="flex flex-col items-center gap-2">
+        <Loader2
+          className={cn('animate-spin', colorClass[color])}
+          size={sizeMap[size]}
+          aria-label="Loading"
+          role="status"
+        />
+        {text && (
+          <span className="text-sm text-muted-foreground" aria-live="polite">
+            {text}
+          </span>
+        )}
+      </div>
+    </div>
+  );
 };

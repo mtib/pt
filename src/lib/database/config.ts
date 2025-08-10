@@ -70,15 +70,17 @@ export const SQL_QUERIES = {
         )
     `,
 
-    /** Create similarity table */
+    /** Create similarity table (with optional category) */
     CREATE_SIMILARITY_TABLE: `
         CREATE TABLE IF NOT EXISTS similarity (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             from_phrase_id INTEGER NOT NULL,
             to_phrase_id INTEGER NOT NULL,
             similarity REAL NOT NULL CHECK(similarity >= 0.0 AND similarity <= 1.0),
+            category_id INTEGER NULL,
             FOREIGN KEY (from_phrase_id) REFERENCES phrases(id) ON DELETE CASCADE,
             FOREIGN KEY (to_phrase_id) REFERENCES phrases(id) ON DELETE CASCADE,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
             UNIQUE(from_phrase_id, to_phrase_id)
         )
     `,
@@ -100,6 +102,7 @@ export const SQL_QUERIES = {
         'CREATE INDEX IF NOT EXISTS idx_similarity_to ON similarity(to_phrase_id)',
         'CREATE INDEX IF NOT EXISTS idx_similarity_score ON similarity(similarity)',
         'CREATE INDEX IF NOT EXISTS idx_similarity_bidirectional ON similarity(from_phrase_id, to_phrase_id)',
+        'CREATE INDEX IF NOT EXISTS idx_similarity_category ON similarity(category_id)',
     ],
 
     /** Insert a new phrase */

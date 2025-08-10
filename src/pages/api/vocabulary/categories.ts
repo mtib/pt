@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getDatabase, getDatabaseConnection } from '@/lib/database/connection';
+import { getDatabase } from '@/lib/database/connection';
 import { withApiAuth } from '@/lib/auth';
 
 /**
@@ -32,8 +32,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         try {
             await db.runQuery('INSERT INTO categories (name) VALUES (?)', [name]);
-            const lastIDRow = await db.allQuery('SELECT last_insert_rowid() as id') as unknown as { id: number; };
-            res.status(201).json({ id: lastIDRow.id, name });
+            const newCategory = await db.allQuery<{ id: Number; }>('SELECT id FROM categories WHERE name = ?', [name]);
+            res.status(201).json({ id: newCategory[0]!.id, name });
         } catch (error) {
             console.error('Failed to create category:', error);
             res.status(500).json({ error: 'Failed to create category' });

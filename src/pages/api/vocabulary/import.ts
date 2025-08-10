@@ -19,7 +19,8 @@ import { withApiAuth } from '@/lib/auth';
  * Request body interface
  */
 interface ImportRequest {
-    data: PhrasePairImport[] | PhrasePairImport; // Can be an array or single object
+    // Accept flexible shape from clients; we will normalize
+    data: unknown[] | unknown; // Can be an array or single object
     overwrite?: boolean;
 }
 
@@ -55,27 +56,38 @@ function validateRequestBody(body: unknown): body is ImportRequest {
     }
 
     // If data is an array, validate each item as a phrase pair
+    const validatePair = (pair: Record<string, unknown>) => {
+        if (
+            typeof pair.phrase1 !== 'string' ||
+            typeof pair.phrase2 !== 'string' ||
+            typeof pair.language1 !== 'string' ||
+            typeof pair.language2 !== 'string' ||
+            typeof pair.similarity !== 'number'
+        ) {
+            return false;
+        }
+        // Accept either categoryId as number or category as string/number; both optional
+        if (
+            pair.categoryId !== undefined && typeof pair.categoryId !== 'number'
+        ) {
+            return false;
+        }
+        if (
+            pair.category !== undefined && typeof pair.category !== 'string' && typeof pair.category !== 'number'
+        ) {
+            return false;
+        }
+        return true;
+    };
+
     if (Array.isArray(candidate.data)) {
         for (const item of candidate.data) {
-            if (!item || typeof item !== 'object') {
-                return false;
-            }
-
-            const pair = item as Record<string, unknown>;
-            if (typeof pair.phrase1 !== 'string' || typeof pair.phrase2 !== 'string' ||
-                typeof pair.language1 !== 'string' || typeof pair.language2 !== 'string' ||
-                typeof pair.similarity !== 'number' || (pair.category && typeof pair.category !== 'string')) {
+            if (!item || typeof item !== 'object' || !validatePair(item as Record<string, unknown>)) {
                 return false;
             }
         }
     } else {
-        // If data is a single object, validate it as a phrase pair
-        const pair = candidate.data as Record<string, unknown>;
-        if (typeof pair.phrase1 !== 'string' || typeof pair.phrase2 !== 'string' ||
-            typeof pair.language1 !== 'string' || typeof pair.language2 !== 'string' ||
-            typeof pair.similarity !== 'number' || (pair.category && typeof pair.category !== 'string')) {
-            return false;
-        }
+        if (!validatePair(candidate.data as Record<string, unknown>)) return false;
     }
 
     // Overwrite is optional boolean
@@ -104,7 +116,22 @@ async function handler(
     }
 
     const { data, overwrite } = req.body;
-    const phrasePairs = Array.isArray(data) ? data : [data];
+    const incoming = (Array.isArray(data) ? data : [data]) as unknown[];
+
+    const toPhrasePairImport = (p: unknown): PhrasePairImport => {
+        const obj = p as Record<string, unknown>;
+        const phrase1 = obj.phrase1 as string;
+        const language1 = obj.language1 as string;
+        const phrase2 = obj.phrase2 as string;
+        const language2 = obj.language2 as string;
+        const similarity = obj.similarity as number;
+        const categoryId = (obj.categoryId as number | undefined) ?? (
+            obj.category !== undefined ? Number(obj.category) : undefined
+        );
+        return { phrase1, language1, phrase2, language2, similarity, categoryId };
+    };
+
+    const phrasePairs: PhrasePairImport[] = incoming.map(toPhrasePairImport);
 
     try {
         const result = await VocabularyAPI.importVocabularyFromPairs(phrasePairs, overwrite);

@@ -17,10 +17,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             // Delete the specific similarity relationship
             await deleteSimilaritiesForPhrase(phrase1Id, phrase2Id);
 
-            // Fetch all remaining phrase pairs
-            const phrasePairs = await getPhrasePairs();
-
-            res.status(200).json(phrasePairs);
+            res.status(200).json({ message: 'Ok' });
         } catch (error) {
             console.error(`Error deleting similarity between phrases ${phrase1} and ${phrase2}:`, error);
             res.status(500).json({ message: 'Internal Server Error' });

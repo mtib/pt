@@ -14,6 +14,9 @@
 import React from 'react';
 import { QuizInterface, ExplanationPanel, ErrorBoundary } from '@/components';
 import { LearningProvider, useLearningContext } from '@/contexts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 /**
  * Inner learning application component that uses the context
@@ -31,8 +34,7 @@ function LearnPortugueseAppInner(): React.JSX.Element {
     return (
       <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-neutral-400">Loading vocabulary...</p>
+          <LoadingSpinner size="lg" color="neutral" text="Loading vocabulary..." />
         </div>
       </div>
     );
@@ -42,16 +44,15 @@ function LearnPortugueseAppInner(): React.JSX.Element {
   if (error && !isInitialized) {
     return (
       <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center">
-        <div className="max-w-md p-6 bg-neutral-800 rounded-lg border border-neutral-700 text-center">
-          <h2 className="text-xl font-bold text-red-400 mb-4">Error Loading App</h2>
-          <p className="text-neutral-300 mb-4">{error}</p>
-          <button
-            onClick={loadNewWord}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-400">Error Loading App</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-sm text-neutral-300 mb-4">{error}</p>
+            <Button onClick={loadNewWord}>Try Again</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -70,14 +71,19 @@ function LearnPortugueseAppInner(): React.JSX.Element {
 
       {/* Error Display */}
       {error && (
-        <div className="fixed top-4 left-4 right-4 lg:right-4 lg:left-auto lg:max-w-md p-4 bg-red-900/90 border border-red-700 rounded-lg z-50">
-          <p className="text-red-100 text-sm">{error}</p>
-          <button
-            onClick={dismissError}
-            className="mt-2 text-xs text-red-300 hover:text-red-100 underline"
-          >
-            Dismiss
-          </button>
+        <div className="fixed top-4 left-4 right-4 lg:right-4 lg:left-auto lg:max-w-md z-50">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm text-red-300">{error}</p>
+              <Button
+                onClick={dismissError}
+                variant="link"
+                className="mt-2 h-auto p-0 text-red-200"
+              >
+                Dismiss
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

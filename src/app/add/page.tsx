@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Combobox } from "@/components/ui/combobox";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthGuard from '@/components/AuthGuard';
 import { Navbar } from '@/components/ui/navbar';
@@ -70,7 +70,7 @@ export default function AddPage() {
                         language1: 'pt',
                         language2: 'en',
                         similarity: 1.0,
-                        category: category ? parseInt(category) : null
+                        categoryId: category ? parseInt(category) : undefined
                     }
                 })
             });
@@ -159,7 +159,7 @@ export default function AddPage() {
                         <CardTitle>Add Phrase Pair</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmitPhrase} className="space-y-4">
+                        <form onSubmit={handleSubmitPhrase} className="space-y-4 flex flex-col">
                             <Input
                                 placeholder="Portuguese"
                                 value={portuguese}
@@ -172,13 +172,18 @@ export default function AddPage() {
                                 onChange={(e) => setEnglish(e.target.value)}
                                 required
                             />
-                            <Combobox
-                                items={categories}
-                                value={category}
-                                onChange={setCategory}
-                                placeholder="Select category..."
-                                allowCustomValue
-                            />
+                            <Select onValueChange={(value) => setCategory(value)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select category..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map((c) => (
+                                        <SelectItem key={c.value} value={c.value}>
+                                            {c.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <Button type="submit" disabled={isLoading}>
                                 {isLoading ? 'Adding...' : 'Add Phrase Pair'}
                             </Button>

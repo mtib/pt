@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export function Navbar() {
     const pathname = usePathname();
@@ -10,10 +11,16 @@ export function Navbar() {
     return (
         <div className="container mx-auto my-4">
             <Card>
-                <div className="flex justify-start items-center p-4 gap-4">
-                    <Link href="/add" className={pathname === '/add' ? 'font-bold hover:underline' : 'hover:underline'}>Add</Link>
-                    <Link href="/remove" className={pathname === '/remove' ? 'font-bold hover:underline' : 'hover:underline'}>Remove</Link>
-                    <Link href="/orphan" className={pathname === '/orphan' ? 'font-bold hover:underline' : 'hover:underline'}>Orphan</Link>
+                <div className="flex justify-start items-center p-3 gap-2">
+                    <Button asChild variant="link" className={pathname === '/add' ? 'font-bold' : ''}>
+                        <Link href="/add">Add</Link>
+                    </Button>
+                    <Button asChild variant="link" className={pathname === '/remove' ? 'font-bold' : ''}>
+                        <Link href="/remove">Remove</Link>
+                    </Button>
+                    <Button asChild variant="link" className={pathname === '/orphan' ? 'font-bold' : ''}>
+                        <Link href="/orphan">Orphan</Link>
+                    </Button>
                 </div>
             </Card>
         </div>
