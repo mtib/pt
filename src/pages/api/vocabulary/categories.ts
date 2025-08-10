@@ -32,7 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         try {
             await db.runQuery('INSERT INTO categories (name) VALUES (?)', [name]);
-            const newCategory = await db.allQuery<{ id: Number; }>('SELECT id FROM categories WHERE name = ?', [name]);
+            const newCategory = await db.allQuery<{ id: number; }>('SELECT id FROM categories WHERE name = ?', [name]);
             res.status(201).json({ id: newCategory[0]!.id, name });
         } catch (error) {
             console.error('Failed to create category:', error);

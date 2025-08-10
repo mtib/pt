@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { deleteSimilaritiesForPhrase, getPhrasePairs } from '@/lib/database/operations';
+import { deleteSimilaritiesForPhrase } from '@/lib/database/operations';
 import { withApiAuth } from '@/lib/auth';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
