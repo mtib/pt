@@ -6,16 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
-import { DbPhrase } from '@/lib/database/config';
 import { debounce } from 'lodash';
 import AuthGuard from '@/components/AuthGuard';
 import { Navbar } from '@/components/ui/navbar';
+import { Phrase } from '@/types';
 
 export default function RemovePage() {
     const { authToken } = useAuth();
     const { toast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; category: string | null; }[]>>({});
+    const [searchResults, setSearchResults] = useState<Record<string, { fromPhrase: Phrase; toPhrase: Phrase; category: string | null; }[]>>({});
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {

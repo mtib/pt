@@ -11,8 +11,10 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { VOCAB_CONFIG, VocabularyAPI, VocabularyResponse } from '@/lib/database';
+import { VocabularyAPI } from '@/lib/database';
 import { formatSqlError } from '@/lib/database';
+import { SupportedLanguage, VocabularyResponse } from '@/types';
+import _ from 'lodash';
 
 /**
  * API response types
@@ -59,7 +61,7 @@ export default async function handler(
 
     try {
         // Extract phrase ID from URL
-        const { phraseId } = req.query;
+        const { phraseId, languages } = req.query;
 
         // Validate phrase ID
         if (!phraseId || Array.isArray(phraseId)) {
@@ -67,6 +69,15 @@ export default async function handler(
                 success: false,
                 error: 'Invalid phrase ID',
                 details: 'Phrase ID must be provided as a single numeric value'
+            });
+            return;
+        }
+
+        if (!languages || Array.isArray(languages)) {
+            res.status(400).json({
+                success: false,
+                error: 'Invalid language parameters',
+                details: 'Must provide an comma concatenated list of languages to use'
             });
             return;
         }
@@ -85,7 +96,7 @@ export default async function handler(
         await VocabularyAPI.init();
 
         // Get practice data for the specific phrase
-        const practiceData = await VocabularyAPI.getPracticeWord(phraseIdNum);
+        const practiceData = await VocabularyAPI.getPracticeWord(phraseIdNum, _.split(languages, ',') as SupportedLanguage[]);
 
         if (!practiceData) {
             res.status(404).json({
@@ -96,21 +107,13 @@ export default async function handler(
             return;
         }
 
-        // Prepare response data
-        const responseData: VocabularyResponse = {
-            sourcePhrase: practiceData.sourcePhrase,
-            targetOptions: practiceData.targetOptions,
-            direction: practiceData.direction,
-            acceptableSimilarity: VOCAB_CONFIG.ACCEPTABLE_SIMILARITY
-        };
-
         // Set cache headers (cache for 5 minutes to improve performance)
-        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
-        res.setHeader('ETag', `"practice-${phraseIdNum}-${Date.now()}"`);
+        res.setHeader('Cache-Control', 'public, max-age=10, s-maxage=10');
+        res.setHeader('ETag', `"practice-${phraseIdNum}-${_.join(languages, '-')}-${Date.now()}"`);
 
         res.status(200).json({
             success: true,
-            data: responseData
+            data: practiceData
         });
 
     } catch (error) {

@@ -11,8 +11,9 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { VocabularyAPI, StatsResponse } from '@/lib/database';
+import { VocabularyAPI } from '@/lib/database';
 import { formatSqlError } from '@/lib/database';
+import { StatsResponse } from '@/types';
 
 /**
  * API response types
@@ -70,10 +71,9 @@ export default async function handler(
             totalSimilarities: dbStats.total_similarities,
             languageBreakdown: {
                 en: dbStats.english_phrases,
-                pt: dbStats.portuguese_phrases
+                pt: dbStats.portuguese_phrases,
+                de: dbStats.german_phrases
             },
-            averageSimilarity: Math.round(dbStats.avg_similarity * 1000) / 1000, // Round to 3 decimal places
-            lastUpdated: new Date().toISOString()
         };
 
         // Set cache headers (cache for 15 minutes as stats don't change frequently)

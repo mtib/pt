@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { DbPhrase } from '@/lib/database/config';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import AuthGuard from '@/components/AuthGuard';
 import { Navbar } from '@/components/ui/navbar';
+import { Phrase } from '@/types';
 
 export default function OrphanPage() {
     const { authToken } = useAuth();
     const { toast } = useToast();
-    const [orphans, setOrphans] = useState<DbPhrase[]>([]);
+    const [orphans, setOrphans] = useState<Phrase[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {

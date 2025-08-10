@@ -51,9 +51,6 @@ export const VOCAB_CONFIG = {
 
     /** Cache duration for API responses in milliseconds (5 minutes) */
     CACHE_DURATION: 5 * 60 * 1000,
-
-    /** Supported language codes */
-    SUPPORTED_LANGUAGES: ['en', 'pt'] as const,
 } as const;
 
 /**
@@ -136,7 +133,7 @@ export const SQL_QUERIES = {
                 SELECT 1
                 FROM similarity s
                 JOIN phrases p2 ON s.to_phrase_id = p2.id
-                WHERE s.from_phrase_id = p.id AND p.language != p2.language
+                WHERE s.from_phrase_id = p.id AND p2.language = ?
             )
         ORDER BY RANDOM()
         LIMIT 1
@@ -148,7 +145,7 @@ export const SQL_QUERIES = {
             p_to.id,
             p_to.phrase,
             p_to.language,
-            p_to.relative_frequency,
+            p_to.relative_frequency as relativeFrequency,
             s.similarity
         FROM similarity s
         JOIN phrases p_from ON s.from_phrase_id = p_from.id
@@ -156,6 +153,7 @@ export const SQL_QUERIES = {
         WHERE p_from.id = ? 
             AND p_from.language != p_to.language
             AND s.similarity >= ?
+            AND p_to.language = ?
         ORDER BY s.similarity DESC
         LIMIT ?
     `,
@@ -172,9 +170,9 @@ export const SQL_QUERIES = {
         SELECT 
             (SELECT COUNT(*) FROM phrases) as total_phrases,
             (SELECT COUNT(*) FROM similarity) as total_similarities,
-            (SELECT AVG(similarity) FROM similarity) as avg_similarity,
             (SELECT COUNT(*) FROM phrases WHERE language = 'en') as english_phrases,
-            (SELECT COUNT(*) FROM phrases WHERE language = 'pt') as portuguese_phrases
+            (SELECT COUNT(*) FROM phrases WHERE language = 'pt') as portuguese_phrases,
+            (SELECT COUNT(*) FROM phrases WHERE language = 'de') as german_phrases
     `,
 
     /** Check if phrase exists */
@@ -213,7 +211,7 @@ export const SQL_QUERIES = {
 
     /** Get orphan phrases (phrases with no translations) */
     GET_ORPHAN_PHRASES: `
-        SELECT p.id, p.phrase, p.language
+        SELECT p.id, p.phrase, p.language, p.relative_frequency as relativeFrequency
         FROM phrases p
         WHERE NOT EXISTS (
             SELECT 1
@@ -223,82 +221,7 @@ export const SQL_QUERIES = {
     `,
 } as const;
 
-/**
- * Type definitions for database entities
- */
-export interface DbPhrase {
-    id: number;
-    phrase: string;
-    language: string;
-    relative_frequency?: number;
-    category?: string;
-    created_at?: string;
-    updated_at?: string;
-}
 
-export interface DbSimilarity {
-    id: number;
-    from_phrase_id: number;
-    to_phrase_id: number;
-    similarity: number;
-    created_at?: string;
-}
-
-export interface DbStats {
-    total_phrases: number;
-    total_similarities: number;
-    avg_similarity: number;
-    english_phrases: number;
-    portuguese_phrases: number;
-}
-
-/**
- * API response type definitions
- */
-export interface PhraseWithSimilarity extends DbPhrase {
-    similarity: number;
-}
-
-export interface VocabularyResponse {
-    sourcePhrase: DbPhrase;
-    targetOptions: PhraseWithSimilarity[];
-    direction: 'en-to-pt' | 'pt-to-en';
-    acceptableSimilarity: number;
-}
-
-export interface ValidationResponse {
-    isCorrect: boolean;
-    matchedPhrase?: PhraseWithSimilarity;
-    correctAnswers: PhraseWithSimilarity[];
-    normalizedUserInput: string;
-}
-
-export interface StatsResponse {
-    totalPhrases: number;
-    totalSimilarities: number;
-    languageBreakdown: {
-        [languageCode: string]: number;
-    };
-    averageSimilarity: number;
-    lastUpdated?: string;
-}
-
-export interface ImportResponse {
-    imported: number;
-    skipped: number;
-    errors: number;
-    message: string;
-}
-
-/**
- * Supported language type
- */
-export type SupportedLanguage = typeof VOCAB_CONFIG.SUPPORTED_LANGUAGES[number];
-
-/**
- * Direction type for vocabulary practice
- */
-export type PracticeDirection = 'en-to-pt' | 'pt-to-en';
 
 /**
  * Phrase pair import data structure

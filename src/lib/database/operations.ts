@@ -9,17 +9,14 @@
  * @version 2.0.0
  */
 
-import { getDatabase, getDatabaseConnection, insertOrFindPhrase } from './connection';
+import { getDatabase } from './connection';
 import {
     VOCAB_CONFIG,
     SQL_QUERIES,
-    DbPhrase,
-    DbStats,
-    PhraseWithSimilarity,
-    SupportedLanguage,
     PhrasePairImport
 } from './config';
-import { normalizeText } from '@/utils/vocabulary';
+import { Phrase, PhraseWithSimilarity, SupportedLanguage } from '@/types';
+import _ from 'lodash';
 
 /**
  * Insert a new phrase into the database
@@ -103,30 +100,30 @@ export async function findExistingPhrase(
 /**
  * Get a phrase by its ID
  */
-export async function getPhraseById(id: number): Promise<DbPhrase | undefined> {
+export async function getPhraseById(id: number): Promise<Phrase | undefined> {
     const db = getDatabase();
-    return db.getQuery<DbPhrase>(SQL_QUERIES.GET_PHRASE_BY_ID, [id]);
+    return db.getQuery<Phrase>(SQL_QUERIES.GET_PHRASE_BY_ID, [id]);
 }
 
 /**
  * Search for phrases in the database with fuzzy matching
  */
-export async function searchPhrases(query: string): Promise<DbPhrase[]> {
+export async function searchPhrases(query: string): Promise<Phrase[]> {
     const db = getDatabase();
     const searchQuery = `%${query}%`;
-    return db.allQuery<DbPhrase>(SQL_QUERIES.SEARCH_PHRASES, [searchQuery]);
+    return db.allQuery<Phrase>(SQL_QUERIES.SEARCH_PHRASES, [searchQuery]);
 }
 
 /**
  * Get a random phrase from the database for a given language
  * Ensures that the phrase has at least one translation
  */
-export async function getRandomPhrase(language: SupportedLanguage): Promise<DbPhrase | undefined> {
+export async function getRandomPhrase(sourceLanguage: SupportedLanguage, targetLanguage: SupportedLanguage): Promise<Phrase | undefined> {
     const db = getDatabase();
 
-    return db.getQuery<DbPhrase>(
+    return db.getQuery<Phrase>(
         SQL_QUERIES.GET_RANDOM_PHRASE_WITH_TRANSLATION,
-        [language]
+        [sourceLanguage, targetLanguage]
     );
 }
 
@@ -136,6 +133,7 @@ export async function getRandomPhrase(language: SupportedLanguage): Promise<DbPh
  */
 export async function getTranslations(
     phraseId: number,
+    targetLanguage: SupportedLanguage,
     minSimilarity: number = VOCAB_CONFIG.ACCEPTABLE_SIMILARITY,
     limit: number = VOCAB_CONFIG.DEFAULT_LIMIT
 ): Promise<PhraseWithSimilarity[]> {
@@ -143,61 +141,31 @@ export async function getTranslations(
 
     return db.allQuery<PhraseWithSimilarity>(
         SQL_QUERIES.GET_TRANSLATIONS,
-        [phraseId, minSimilarity, Math.min(limit, VOCAB_CONFIG.MAX_LIMIT)]
+        [phraseId, minSimilarity, targetLanguage, Math.min(limit, VOCAB_CONFIG.MAX_LIMIT)]
     );
 }
+
+export type DatabaseStats = {
+    total_phrases: number;
+    total_similarities: number;
+    english_phrases: number;
+    portuguese_phrases: number;
+    german_phrases: number;
+};
 
 /**
  * Get database statistics
  */
-export async function getDatabaseStats(): Promise<DbStats> {
+export async function getDatabaseStats(): Promise<DatabaseStats> {
     const db = getDatabase();
 
-    const stats = await db.getQuery<DbStats>(SQL_QUERIES.GET_STATS);
+    const stats = await db.getQuery<DatabaseStats>(SQL_QUERIES.GET_STATS);
 
     if (!stats) {
         throw new Error('Failed to retrieve database statistics');
     }
 
     return stats;
-}
-
-/**
- * Validate a user's answer against possible correct answers
- * Returns information about correctness and matched phrases
- */
-export async function validateAnswer(
-    sourcePhraseId: number,
-    userAnswer: string,
-    acceptableSimilarity: number = VOCAB_CONFIG.ACCEPTABLE_SIMILARITY
-): Promise<{
-    isCorrect: boolean;
-    matchedPhrase?: PhraseWithSimilarity;
-    correctAnswers: PhraseWithSimilarity[];
-    normalizedUserInput: string;
-}> {
-    // Get all possible correct answers
-    const correctAnswers = await getTranslations(sourcePhraseId, acceptableSimilarity);
-
-    // Normalize user input for comparison
-    const normalizedUserInput = normalizeText(userAnswer);
-
-    // Check if user input matches any correct answer
-    let matchedPhrase: PhraseWithSimilarity | undefined;
-
-    for (const answer of correctAnswers) {
-        if (normalizeText(answer.phrase) === normalizedUserInput) {
-            matchedPhrase = answer;
-            break;
-        }
-    }
-
-    return {
-        isCorrect: !!matchedPhrase,
-        matchedPhrase,
-        correctAnswers,
-        normalizedUserInput
-    };
 }
 
 /**
@@ -320,35 +288,32 @@ export async function clearAllVocabulary(): Promise<void> {
  * Returns a source phrase and its possible translations
  */
 export async function getRandomPracticePair(
-    sourceLanguage?: SupportedLanguage
+    languages: SupportedLanguage[]
 ): Promise<{
-    sourcePhrase: DbPhrase;
+    sourcePhrase: Phrase;
     targetOptions: PhraseWithSimilarity[];
-    direction: 'en-to-pt' | 'pt-to-en';
 } | null> {
-    // Determine source language
-    const language = sourceLanguage ||
-        (Math.random() < VOCAB_CONFIG.RANDOM_LANGUAGE_CHANCE ? 'en' : 'pt');
+    if (languages.length < 2) {
+        throw new Error('At least two languages are required to get a random practice pair.');
+    }
+    const sourceLanguage = _.sample(languages)!;
+    const targetLanguage = _.sample(_.filter(languages, lang => lang !== sourceLanguage))!;
 
     // Get random phrase
-    const sourcePhrase = await getRandomPhrase(language);
+    const sourcePhrase = await getRandomPhrase(sourceLanguage, targetLanguage);
     if (!sourcePhrase) {
         return null;
     }
 
     // Get translations for the phrase
-    const targetOptions = await getTranslations(sourcePhrase.id);
+    const targetOptions = await getTranslations(sourcePhrase.id, targetLanguage);
     if (targetOptions.length === 0) {
         return null;
     }
 
-    // Determine direction
-    const direction = language === 'en' ? 'en-to-pt' : 'pt-to-en';
-
     return {
         sourcePhrase,
         targetOptions,
-        direction
     };
 }
 
@@ -356,29 +321,25 @@ export async function getRandomPracticePair(
  * Get practice data for a specific phrase ID
  */
 export async function getPracticeDataForPhrase(
-    phraseId: number
+    phraseId: number, languages: SupportedLanguage[]
 ): Promise<{
-    sourcePhrase: DbPhrase;
+    sourcePhrase: Phrase;
     targetOptions: PhraseWithSimilarity[];
-    direction: 'en-to-pt' | 'pt-to-en';
 } | null> {
     const sourcePhrase = await getPhraseById(phraseId);
     if (!sourcePhrase) {
         return null;
     }
+    const targetLanguage = _.sample(languages.filter(lang => lang != sourcePhrase.language))!;
 
-    const targetOptions = await getTranslations(sourcePhrase.id);
+    const targetOptions = await getTranslations(sourcePhrase.id, targetLanguage);
     if (targetOptions.length === 0) {
         return null;
     }
 
-    // Determine direction based on source language
-    const direction = sourcePhrase.language === 'en' ? 'en-to-pt' : 'pt-to-en';
-
     return {
         sourcePhrase,
         targetOptions,
-        direction
     };
 }
 
@@ -417,9 +378,9 @@ export async function getAllCategories(): Promise<string[]> {
 /**
  * Get all phrases that do not have a translation
  */
-export async function getOrphanPhrases(): Promise<DbPhrase[]> {
+export async function getOrphanPhrases(): Promise<Phrase[]> {
     const db = getDatabase();
-    return db.allQuery<DbPhrase>(SQL_QUERIES.GET_ORPHAN_PHRASES);
+    return db.allQuery<Phrase>(SQL_QUERIES.GET_ORPHAN_PHRASES);
 }
 
 /**
@@ -486,22 +447,6 @@ export async function batchInsertVocabulary(
 }
 
 /**
- * Get all phrase-phrase pairs by joining through the similarity table.
- */
-export async function getPhrasePairs(): Promise<{ fromPhrase: DbPhrase; toPhrase: DbPhrase; similarity: number; }[]> {
-    const db = getDatabase();
-    return db.allQuery<{ fromPhrase: DbPhrase; toPhrase: DbPhrase; similarity: number; }>(
-        `SELECT 
-            p1.id AS fromId, p1.phrase AS fromPhrase, p1.language AS fromLanguage,
-            p2.id AS toId, p2.phrase AS toPhrase, p2.language AS toLanguage,
-            s.similarity
-         FROM similarity s
-         JOIN phrases p1 ON s.from_phrase_id = p1.id
-         JOIN phrases p2 ON s.to_phrase_id = p2.id`
-    );
-}
-
-/**
  * Delete all similarity relationships for a given phrase ID.
  */
 export async function deleteSimilaritiesForPhrase(fromPhraseId: number, toPhraseId: number): Promise<void> {
@@ -515,7 +460,7 @@ export async function deleteSimilaritiesForPhrase(fromPhraseId: number, toPhrase
 /**
  * Search for phrase pairs grouped by category.
  */
-export async function searchPhrasePairs(query: string): Promise<Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; }[]>> {
+export async function searchPhrasePairs(query: string): Promise<Record<string, { fromPhrase: Phrase; toPhrase: Phrase; }[]>> {
     const db = getDatabase();
     const searchQuery = `%${query}%`;
 
@@ -554,46 +499,14 @@ export async function searchPhrasePairs(query: string): Promise<Record<string, {
             fromPhrase: {
                 id: row.fromPhraseId,
                 phrase: row.fromPhrase,
-                language: row.fromLanguage,
+                language: row.fromLanguage as SupportedLanguage,
             },
             toPhrase: {
                 id: row.toPhraseId,
                 phrase: row.toPhrase,
-                language: row.toLanguage,
+                language: row.toLanguage as SupportedLanguage,
             },
         });
         return acc;
-    }, {} as Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; }[]>);
-}
-
-/**
- * Migrate vocabulary data from phrase pairs
- * This function is used to migrate data to the new schema with category IDs.
- */
-export async function migrateVocabulary(pairs: PhrasePairImport[]) {
-    const db = await getDatabaseConnection();
-
-    try {
-        await db.exec('BEGIN TRANSACTION');
-
-        for (const pair of pairs) {
-            const { phrase1, phrase2, language1, language2, similarity, categoryId } = pair;
-
-            const fromPhraseId = await insertOrFindPhrase(db, phrase1, language1);
-            const toPhraseId = await insertOrFindPhrase(db, phrase2, language2);
-
-            await db.run(
-                `INSERT INTO similarity (from_phrase_id, to_phrase_id, similarity, category_id)
-                 VALUES (?, ?, ?, ?)`,
-                [fromPhraseId, toPhraseId, similarity, categoryId || null]
-            ); // Replaced `exec` with `run` for parameterized query
-        }
-
-        await db.exec('COMMIT');
-    } catch (error) {
-        await db.exec('ROLLBACK');
-        throw error;
-    } finally {
-        db.close();
-    }
+    }, {} as Record<string, { fromPhrase: Phrase; toPhrase: Phrase; }[]>);
 }

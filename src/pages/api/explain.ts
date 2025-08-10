@@ -16,8 +16,8 @@ import { z } from 'zod';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { Explanation, ApiErrorResponse } from '@/types';
-import { VocabularyAPI, DbPhrase, PhraseWithSimilarity } from '@/lib/database';
+import { Explanation, ApiErrorResponse, Phrase, toFullLanguageName } from '@/types';
+import { VocabularyAPI } from '@/lib/database';
 
 // Input validation schema - now takes both source and expected answer phrase IDs
 const RequestSchema = z.object({
@@ -172,49 +172,48 @@ function sendErrorResponse(
 /**
  * Creates an optimized prompt for explaining a Portuguese phrase
  */
-function createPrompt(portuguesePhrase: DbPhrase, englishTranslation: DbPhrase, synonyms: PhraseWithSimilarity[], alternatives: PhraseWithSimilarity[]): string {
-    const portugueseSynonymsList = synonyms.filter(s => s.language === 'pt').map(s => `"${s.phrase}" (similarity: ${s.similarity})`).join(', ');
-    const alternativesList = alternatives.map(a => `"${a.phrase}" (similarity: ${a.similarity})`).join(', ');
+function createPrompt(sourcePhrase: Phrase, targetPhrase: Phrase): string {
+    const isEnglishToForeign = sourcePhrase.language == 'en';
+    const foreignPhrase = isEnglishToForeign ? targetPhrase : sourcePhrase;
+    const englishPhrase = isEnglishToForeign ? sourcePhrase : targetPhrase;
 
-    return `You are explaining the Portuguese phrase "${portuguesePhrase.phrase}" for language learners. The primary English translation is "${englishTranslation.phrase}".
+    return `You are explaining the ${toFullLanguageName(foreignPhrase.language)} phrase "${foreignPhrase.phrase}" for language learners. The primary English translation is "${englishPhrase.phrase}".
 
 CONTEXT:
-- Portuguese phrase to explain: "${portuguesePhrase.phrase}"
-- Primary English translation: "${englishTranslation.phrase}"
-- Available Portuguese synonyms: ${portugueseSynonymsList || 'None available'}
-- Available English alternatives: ${alternativesList || 'None available'}
+- ${toFullLanguageName(foreignPhrase.language)} phrase to explain: "${foreignPhrase.phrase}"
+- Primary English translation: "${englishPhrase.phrase}"
 
-IMPORTANT: Always focus your explanation on the Portuguese phrase "${portuguesePhrase.phrase}", explaining its meaning, usage, and cultural context in European Portuguese, but your answer is always in english, excluding portuguese examples or referencing portuguese words or phrases in explanations.
+IMPORTANT: Always focus your explanation on the ${toFullLanguageName(foreignPhrase.language)} phrase "${foreignPhrase.phrase}", explaining its meaning, usage, and cultural context in ${toFullLanguageName(foreignPhrase.language)}, but your answer is always in english, excluding ${toFullLanguageName(foreignPhrase.language)} examples or referencing ${toFullLanguageName(foreignPhrase.language)} words or phrases in explanations.
 
 REQUIRED FORMAT - Provide exactly these fields:
 
-example: Create ONE practical portuguese sentence using "${portuguesePhrase.phrase}" with the complete English translation in parentheses, like this: '<portuguese text containing example> (<english translation>). Make it relevant to everyday situations in Portuguese-speaking contexts. In this section all the <portuguese text containing example> is allowed to be portuguese.
+example: Create ONE practical ${toFullLanguageName(foreignPhrase.language)} sentence using "${foreignPhrase.phrase}" with the complete English translation in parentheses, like this: '<${toFullLanguageName(foreignPhrase.language)} text containing example> (<english translation>). Make it relevant to everyday situations in ${toFullLanguageName(foreignPhrase.language)}-speaking contexts. In this section all the <${toFullLanguageName(foreignPhrase.language)} text containing example> is allowed to be ${toFullLanguageName(foreignPhrase.language)}.
 
-explanation: Write 3-4 clear sentences explaining: (1) the meaning and usage of "${portuguesePhrase.phrase}" in Portuguese, (2) why "${englishTranslation.phrase}" is a good English translation, (3) key learning points about context, register, or cultural usage, and (4) any important usage notes for Portuguese learners.
+explanation: Write 3-4 clear sentences explaining: (1) the meaning and usage of "${foreignPhrase.phrase}" in ${toFullLanguageName(foreignPhrase.language)}, (2) why "${englishPhrase.phrase}" is a good English translation, (3) key learning points about context, register, or cultural usage, and (4) any important usage notes for ${toFullLanguageName(foreignPhrase.language)} learners.
 
-definition: Write a precise 1-2 sentence definition of the Portuguese phrase "${portuguesePhrase.phrase}" that clearly connects to the English meaning "${englishTranslation.phrase}".
+definition: Write a precise 1-2 sentence definition of the ${toFullLanguageName(foreignPhrase.language)} phrase "${foreignPhrase.phrase}" that clearly connects to the English meaning "${englishPhrase.phrase}".
 
-grammar: State the part of speech and essential Portuguese grammar information (gender for nouns, conjugation type for verbs, irregular forms, preposition requirements, etc.).
+grammar: State the part of speech and essential ${toFullLanguageName(foreignPhrase.language)} grammar information (gender for nouns, conjugation type for verbs, irregular forms, preposition requirements, etc.).
 
-facts: Write 2-3 sentences covering: Portuguese etymology, cultural context in Portuguese-speaking countries, frequency of use in Brazilian vs European Portuguese, or interesting linguistic connections. Make it memorable and educational.
+facts: Write 2-3 sentences covering: ${toFullLanguageName(foreignPhrase.language)} etymology, cultural context in ${toFullLanguageName(foreignPhrase.language)}-speaking countries, frequency of use in ${toFullLanguageName(foreignPhrase.language)}, or interesting linguistic connections. Make it memorable and educational.
 
-pronunciationIPA: Provide accurate IPA notation for the Portuguese phrase "${portuguesePhrase.phrase}".
+pronunciationIPA: Provide accurate IPA notation for the ${toFullLanguageName(foreignPhrase.language)} phrase "${foreignPhrase.phrase}".
 
-pronunciationEnglish: Give a clear English approximation for Portuguese pronunciation using familiar sounds and syllable breakdown (e.g., "sounds like 'CAH-zah' where 'CAH' rhymes with 'spa'").
+pronunciationEnglish: Give a clear English approximation for ${toFullLanguageName(foreignPhrase.language)} pronunciation using familiar sounds and syllable breakdown (e.g., "sounds like 'CAH-zah' where 'CAH' rhymes with 'spa'").
 
 synonyms: For each provided Portuguese synonym, explain: meaning differences, formality levels, regional preferences (Brazil vs Portugal), and when to use each in Portuguese. Format: "Word1: specific usage context and nuance in Portuguese; Word2: different context and meaning shade"
 
-alternatives: Explain alternative English translations and their contexts. Focus on: when to use "${englishTranslation.phrase}" vs other English options, register differences (formal/informal), and subtle meaning changes. Help learners understand which English translation best captures the Portuguese meaning in different situations.
+alternatives: Explain alternative English translations and their contexts. Focus on: when to use "${englishPhrase.phrase}" vs other English options, register differences (formal/informal), and subtle meaning changes. Help learners understand which English translation best captures the ${toFullLanguageName(foreignPhrase.language)} meaning in different situations.
 
-Be educational, practical, and help learners understand Portuguese language and culture through this phrase.`;
+Be educational, practical, and help learners understand ${toFullLanguageName(foreignPhrase.language)} language and culture through this phrase.`;
 }
 
 /**
  * Generates explanation using OpenAI API with caching - always explains the Portuguese phrase
  */
-async function generateExplanationForPhrase(sourcePhraseId: number, expectedAnswerId: number): Promise<Explanation> {
+async function generateExplanationForPhrase(sourcePhraseId: number, targetPhraseId: number): Promise<Explanation> {
     // Check cache first
-    const cachedExplanation = await getCachedExplanation(sourcePhraseId, expectedAnswerId);
+    const cachedExplanation = await getCachedExplanation(sourcePhraseId, targetPhraseId);
     if (cachedExplanation) {
         return cachedExplanation;
     }
@@ -223,57 +222,15 @@ async function generateExplanationForPhrase(sourcePhraseId: number, expectedAnsw
     await VocabularyAPI.init();
 
     // Get the source phrase data
-    const practiceData = await VocabularyAPI.getPracticeWord(sourcePhraseId);
-    if (!practiceData) {
+    const sourcePhrase = await VocabularyAPI.getPhrase(sourcePhraseId);
+    if (!sourcePhrase) {
         throw new Error(`Source phrase with ID ${sourcePhraseId} not found`);
     }
 
-    const { sourcePhrase, targetOptions } = practiceData;
-
-    // Find the expected answer in the target options
-    const expectedAnswer = targetOptions.find(option => option.id === expectedAnswerId);
-    if (!expectedAnswer) {
-        throw new Error(`Expected answer with ID ${expectedAnswerId} not found in target options`);
+    const targetPhrase = await VocabularyAPI.getPhrase(targetPhraseId);
+    if (!targetPhrase) {
+        throw new Error(`Target phrase with ID ${targetPhraseId} not found`);
     }
-
-    // Always identify the Portuguese phrase and English translation for explanation
-    let portuguesePhrase: DbPhrase;
-    let englishTranslation: DbPhrase;
-
-    if (sourcePhrase.language === 'pt') {
-        portuguesePhrase = sourcePhrase;
-        englishTranslation = expectedAnswer.language === 'en' ? expectedAnswer :
-            targetOptions.find(option => option.language === 'en') || expectedAnswer;
-    } else {
-        // Source is English, so Portuguese phrase must be in targetOptions
-        portuguesePhrase = expectedAnswer.language === 'pt' ? expectedAnswer :
-            targetOptions.find(option => option.language === 'pt') || sourcePhrase;
-        englishTranslation = sourcePhrase;
-    }
-
-    // Ensure we have a Portuguese phrase to explain
-    if (portuguesePhrase.language !== 'pt') {
-        throw new Error('No Portuguese phrase found to explain');
-    }
-
-    // Get all available phrases for synonyms and alternatives
-    const allPhrases = [sourcePhrase, ...targetOptions];
-
-    // Portuguese synonyms are other Portuguese phrases
-    const synonyms = allPhrases
-        .filter(phrase => phrase.language === 'pt' && phrase.id !== portuguesePhrase.id)
-        .map(phrase => ({
-            ...phrase,
-            similarity: targetOptions.find(option => option.id === phrase.id)?.similarity || 0
-        }));
-
-    // English alternatives are all English phrases
-    const alternatives = allPhrases
-        .filter(phrase => phrase.language === 'en')
-        .map(phrase => ({
-            ...phrase,
-            similarity: targetOptions.find(option => option.id === phrase.id)?.similarity || 0
-        }));
 
     // Generate new explanation
     try {
@@ -287,7 +244,10 @@ async function generateExplanationForPhrase(sourcePhraseId: number, expectedAnsw
                 },
                 {
                     role: 'user',
-                    content: createPrompt(portuguesePhrase, englishTranslation, synonyms, alternatives),
+                    content: createPrompt(
+                        sourcePhrase,
+                        targetPhrase
+                    ),
                 },
             ],
             text: {
@@ -303,12 +263,12 @@ async function generateExplanationForPhrase(sourcePhraseId: number, expectedAnsw
 
         const fullExplanation: Explanation = {
             ...explanation,
-            word: portuguesePhrase.phrase, // Always the Portuguese phrase
-            englishReference: englishTranslation.phrase,
+            foreignPhrase: sourcePhrase.language == 'en' ? targetPhrase.phrase : sourcePhrase.phrase,
+            englishPhrase: sourcePhrase.language == 'en' ? sourcePhrase.phrase : targetPhrase.phrase
         };
 
         // Cache the result asynchronously
-        cacheExplanation(sourcePhraseId, expectedAnswerId, fullExplanation).catch(error => {
+        cacheExplanation(sourcePhraseId, targetPhraseId, fullExplanation).catch(error => {
             console.error('Failed to cache explanation:', error);
         });
 

@@ -23,7 +23,6 @@ import { getDatabase } from './connection';
 import {
     getRandomPracticePair,
     getPracticeDataForPhrase,
-    validateAnswer,
     getDatabaseStats,
     importVocabularyFromPairs
 } from './operations';
@@ -45,22 +44,32 @@ export const VocabularyAPI = {
     /**
      * Get a random word for practice
      */
-    async getRandomWord(sourceLanguage?: 'en' | 'pt') {
-        return getRandomPracticePair(sourceLanguage);
+    async getRandomWord(languages: SupportedLanguage[]) {
+        return getRandomPracticePair(languages);
     },
 
     /**
      * Get practice data for a specific phrase
      */
-    async getPracticeWord(phraseId: number) {
-        return getPracticeDataForPhrase(phraseId);
+    async getPracticeWord(phraseId: number, languages: SupportedLanguage[]) {
+        return getPracticeDataForPhrase(phraseId, languages);
     },
 
     /**
-     * Validate a user's answer
+     * Get phrase data
      */
-    async validateAnswer(sourcePhraseId: number, userAnswer: string, acceptableSimilarity?: number) {
-        return validateAnswer(sourcePhraseId, userAnswer, acceptableSimilarity);
+    async getPhrase(phraseId: number) {
+        const db = getDatabase();
+
+        const rows = await db.allQuery<Phrase>(
+            "SELECT id, phrase, language, relative_frequency as relativeFrequency FROM phrases WHERE id = ?",
+            [phraseId]
+        );
+
+        if (rows) {
+            return rows[0];
+        }
+        return null;
     },
 
     /**
@@ -93,6 +102,7 @@ export default VocabularyAPI;
  * Import vocabulary from phrase pairs with optional category handling
  */
 import { getDatabaseConnection as dbConnection, insertOrFindPhrase as findPhrase } from './connection';
+import { Phrase, SupportedLanguage } from '@/types';
 
 export async function importVocabularyWithCategories(pairs: PhrasePairImport[], overwrite = false) {
     const db = await dbConnection();

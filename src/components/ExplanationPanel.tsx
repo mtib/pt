@@ -66,10 +66,10 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = () => {
                 <header className="mb-4 sm:mb-6 text-lg sm:text-2xl">
                     <div className="font-bold mb-1">
                         <span className='font-bold'>
-                            {explanation.word}
+                            {explanation.foreignPhrase}
                         </span>
                         <span className="text-neutral-500 dark:text-neutral-400 font-light sm:text-lg block sm:inline border-l pl-4 ml-4">
-                            {explanation.englishReference}
+                            {explanation.englishPhrase}
                         </span>
                     </div>
 

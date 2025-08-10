@@ -14,8 +14,10 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { VocabularyAPI, VOCAB_CONFIG, VocabularyResponse } from '@/lib/database';
+import { VocabularyAPI } from '@/lib/database';
 import { formatSqlError } from '@/lib/database';
+import { SupportedLanguage, VocabularyResponse } from '@/types';
+import _ from 'lodash';
 
 /**
  * API response types
@@ -62,26 +64,26 @@ export default async function handler(
 
     try {
         // Extract and validate query parameters
-        const { language } = req.query;
+        /**
+         * comma separated list of languages
+         */
+        const { languages } = req.query;
 
-        let sourceLanguage: 'en' | 'pt' | undefined;
-        if (language) {
-            if (typeof language !== 'string' || !VOCAB_CONFIG.SUPPORTED_LANGUAGES.includes(language as 'en' | 'pt')) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Invalid language parameter',
-                    details: `Language must be one of: ${VOCAB_CONFIG.SUPPORTED_LANGUAGES.join(', ')}`
-                });
-                return;
-            }
-            sourceLanguage = language as 'en' | 'pt';
+        if (!languages || Array.isArray(languages)) {
+            res.status(400).json({
+                success: false,
+                error: 'Must pass list of comma separated languages to choose from'
+            });
+            return;
         }
+
+        const languageArray = _.split(languages, ',') as SupportedLanguage[];
 
         // Initialize database if needed
         await VocabularyAPI.init();
 
         // Get random vocabulary
-        const vocabularyData = await VocabularyAPI.getRandomWord(sourceLanguage);
+        const vocabularyData = await VocabularyAPI.getRandomWord(languageArray);
 
         if (!vocabularyData) {
             res.status(404).json({
@@ -92,14 +94,6 @@ export default async function handler(
             return;
         }
 
-        // Prepare response data
-        const responseData: VocabularyResponse = {
-            sourcePhrase: vocabularyData.sourcePhrase,
-            targetOptions: vocabularyData.targetOptions,
-            direction: vocabularyData.direction,
-            acceptableSimilarity: VOCAB_CONFIG.ACCEPTABLE_SIMILARITY
-        };
-
         // Set cache headers (don't cache random responses to ensure randomness)
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
@@ -107,7 +101,7 @@ export default async function handler(
 
         res.status(200).json({
             success: true,
-            data: responseData
+            data: vocabularyData
         });
 
     } catch (error) {

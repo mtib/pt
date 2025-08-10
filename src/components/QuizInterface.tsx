@@ -9,7 +9,6 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { formatTimer } from '@/utils/vocabulary';
 import { useLearningContext } from '@/contexts';
 import Link from 'next/link';
 
@@ -20,10 +19,10 @@ export const QuizInterface: React.FC = () => {
     const {
         vocabularyXP,
         currentWord,
+        direction,
         userInput,
         result,
         isEditable,
-        remainingTime,
         dailyStats,
         loadingExplanation,
         isAuthenticated,
@@ -41,15 +40,15 @@ export const QuizInterface: React.FC = () => {
         if (!currentWord || !isEditable) return;
 
         const timeoutId = setTimeout(() => {
-            if (currentWord.direction === 'en-to-pt') {
-                portugueseInputRef.current?.focus();
-            } else {
+            if (direction?.from == 'en') {
                 englishInputRef.current?.focus();
+            } else if (direction?.from == 'pt') {
+                portugueseInputRef.current?.focus();
             }
-        }, 100);
+        }, 50);
 
         return () => clearTimeout(timeoutId);
-    }, [currentWord, isEditable]);
+    }, [currentWord, isEditable, direction?.from]);
 
     // Handle keyboard shortcuts
     useEffect(() => {
@@ -106,30 +105,30 @@ export const QuizInterface: React.FC = () => {
                     {`{
   "xp": ${vocabularyXP},
   "word": {
-    "portuguese": "`}
+    "pt": "`}
 
                     <input
                         ref={portugueseInputRef}
                         name="portuguese"
                         type="text"
-                        value={currentWord?.direction === 'en-to-pt' ? userInput : currentWord?.translation_pt || ''}
+                        value={direction?.from === 'pt' ? currentWord?.sourcePhrase?.phrase || '' : userInput}
                         onChange={(e) => handleInputChange(e.target.value)}
-                        className={getInputClassName(isEditable && currentWord?.direction === 'en-to-pt')}
-                        disabled={!isEditable || currentWord?.direction !== 'en-to-pt'}
+                        className={getInputClassName(isEditable && direction?.from !== 'pt')}
+                        disabled={!isEditable || direction?.from === 'pt'}
                         aria-label="Portuguese word input"
                         autoComplete="off"
                     />
                     {`",
-    "english": "`}
+    "en": "`}
 
                     <input
                         ref={englishInputRef}
                         name="english"
                         type="text"
-                        value={currentWord?.direction === 'en-to-pt' ? currentWord?.translation_en || '' : userInput}
+                        value={direction?.from === 'en' ? currentWord?.sourcePhrase?.phrase || '' : userInput}
                         onChange={(e) => handleInputChange(e.target.value)}
-                        className={getInputClassName(isEditable && currentWord?.direction === 'pt-to-en')}
-                        disabled={!isEditable || currentWord?.direction !== 'pt-to-en'}
+                        className={getInputClassName(isEditable && direction?.from !== 'en')}
+                        disabled={!isEditable || direction?.from === 'en'}
                         aria-label="English word input"
                         autoComplete="off"
                     />
@@ -187,7 +186,6 @@ export const QuizInterface: React.FC = () => {
                     </Link>
                     {`
   ],
-  "nextIn": "${remainingTime !== null ? formatTimer(remainingTime) : 'infinity'}"
 }
 `}
                 </code>

@@ -9,49 +9,13 @@
  */
 
 import { PhrasePairImport } from '@/lib/database/config';
+import { ImportResponse, StatsResponse, SupportedLanguage, VocabularyResponse } from '@/types';
+import _ from 'lodash';
 
 /**
  * Base API configuration
  */
 const API_BASE = '/api/vocabulary';
-
-/**
- * API response interfaces
- */
-export interface DatabasePhrase {
-    id: number;
-    phrase: string;
-    language: string;
-    relativeFrequency?: number;
-}
-
-export interface DatabasePhraseWithSimilarity extends DatabasePhrase {
-    similarity: number;
-}
-
-export interface VocabularyResponse {
-    sourcePhrase: DatabasePhrase;
-    targetOptions: DatabasePhraseWithSimilarity[];
-    direction: 'en-to-pt' | 'pt-to-en';
-    acceptableSimilarity: number;
-}
-
-export interface DatabaseStatsResponse {
-    totalPhrases: number;
-    totalSimilarities: number;
-    languageBreakdown: {
-        [languageCode: string]: number;
-    };
-    averageSimilarity: number;
-    lastUpdated?: string;
-}
-
-export interface ImportResponse {
-    imported: number;
-    skipped: number;
-    errors: number;
-    message: string;
-}
 
 /**
  * Generic API response wrapper
@@ -132,23 +96,22 @@ export const DatabaseVocabularyApi = {
     /**
      * Get a random word for practice
      */
-    async getRandomWord(sourceLanguage?: 'en' | 'pt'): Promise<VocabularyResponse> {
-        const params = sourceLanguage ? `?language=${sourceLanguage}` : '';
-        return apiRequest<VocabularyResponse>(`${API_BASE}/random${params}`);
+    async getRandomWord(languages: readonly SupportedLanguage[]): Promise<VocabularyResponse> {
+        return apiRequest<VocabularyResponse>(`${API_BASE}/random?languages=${_.join(languages, ',')}`);
     },
 
     /**
      * Get practice data for a specific phrase ID
      */
-    async getPracticeWord(phraseId: number): Promise<VocabularyResponse> {
-        return apiRequest<VocabularyResponse>(`${API_BASE}/practice/${phraseId}`);
+    async getPracticeWord(phraseId: number, languages: readonly SupportedLanguage[]): Promise<VocabularyResponse> {
+        return apiRequest<VocabularyResponse>(`${API_BASE}/practice/${phraseId}?languages=${languages.join(',')}`);
     },
 
     /**
      * Get database statistics
      */
-    async getStats(): Promise<DatabaseStatsResponse> {
-        return apiRequest<DatabaseStatsResponse>(`${API_BASE}/stats`);
+    async getStats(): Promise<StatsResponse> {
+        return apiRequest<StatsResponse>(`${API_BASE}/stats`);
     },
 
     /**

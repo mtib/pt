@@ -10,27 +10,22 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import {
     Explanation,
     QuizResult,
-    DatabasePracticeWord,
+    Direction,
+    PracticePhrase,
+    StatsResponse,
+    VocabularyResponse,
+    PhraseWithSimilarity,
 } from '@/types';
-import DatabaseApiClient, { DatabaseStatsResponse } from '@/lib/database-api-client';
 import { normalizeText, calculateXP } from '@/utils/vocabulary';
 import { CONFIG, STORAGE_KEYS } from '@/types';
-import { useDailyStats } from '@/hooks';
-
-/**
- * Practice word metadata for local storage
- * Only stores essential tracking data, not the full word content
- */
-interface PracticeWordMetadata {
-    id: number;
-    correctCount: number;
-    lastPracticed: number;
-}
+import { useDailyStats, useLocalStorage } from '@/hooks';
+import { speak } from '@/lib/utils';
+import DatabaseVocabularyApi from '@/lib/database-api-client';
 
 /**
  * Learning context state interface
@@ -38,12 +33,11 @@ interface PracticeWordMetadata {
 interface LearningState {
     // Core quiz state
     vocabularyXP: number;
-    currentWord: DatabasePracticeWord | null;
+    currentWord: VocabularyResponse | null;
     userInput: string;
     result: QuizResult;
     isEditable: boolean;
-    remainingTime: number | null;
-    questionStartTime: number | null;
+    direction: Direction | null;
 
     // Explanation state
     explanation: Explanation | null;
@@ -55,7 +49,7 @@ interface LearningState {
     isAuthenticated: boolean;
 
     // Database statistics
-    databaseStats: DatabaseStatsResponse | null;
+    databaseStats: StatsResponse | null;
 
     // Daily statistics (using hooks for local tracking)
     dailyStats: {
@@ -80,7 +74,7 @@ interface LearningActions {
     // Utility actions
     loadNewWord: () => Promise<void>;
     loadPracticeWord: () => Promise<void>;
-    validateAnswer: (answer: string) => boolean;
+    validateAnswer: (answer: string) => PhraseWithSimilarity | null;
     dismissError: () => void;
 }
 
@@ -101,13 +95,17 @@ interface LearningProviderProps {
     children: ReactNode;
 }
 
+export const LANGUAGES = ['en', 'pt'] as const;
+
 /**
  * Learning provider component that manages all quiz-related state using database API
  */
 export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) => {
     // Simple local state management (hooks can be added later)
-    const [vocabularyXP, setVocabularyXP] = useState(0);
-    const [practiceWordIds, setPracticeWordIds] = useState<PracticeWordMetadata[]>([]);
+    const [vocabularyXP, setVocabularyXP] = useLocalStorage(STORAGE_KEYS.VOCABULARY_XP, 0);
+    const [practiceWordIds, setPracticeWordIds] = useLocalStorage<PracticePhrase[]>(STORAGE_KEYS.PRACTICE_WORDS, []);
+    const hasPracticeWords = useMemo(() => practiceWordIds.length > 0, [practiceWordIds.length]);
+    const lastQuestionRevealTimeRef = useRef<number>(0);
 
     // Get auth token from the new AuthContext
     const { authToken } = useAuth();
@@ -121,108 +119,36 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         incrementTodayCount,
     } = useDailyStats();
 
-    // Simple speech synthesis
-    const speakPortuguese = useCallback((text: string) => {
-        if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'pt-PT';
-            speechSynthesis.speak(utterance);
-        }
-    }, []);
+    const addXP = useCallback((xp: number) => setVocabularyXP(prev => prev + xp), [setVocabularyXP]);
 
-    const speak = useCallback((text: string, lang: 'en' | 'pt') => {
-        if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = lang === 'pt' ? 'pt-PT' : 'en-US';
-            speechSynthesis.speak(utterance);
-        }
-    }, []);
-
-    // Timer management with countdown display
-    const [timer, setTimer] = useState<number | null>(null);
-    const [timerEndTime, setTimerEndTime] = useState<number | null>(null);
-    const [remainingTime, setRemainingTime] = useState<number | null>(null);
-
-    // Update remaining time display
-    useEffect(() => {
-        if (!timerEndTime) {
-            setRemainingTime(null);
-            return;
-        }
-
-        const updateRemainingTime = () => {
-            const remaining = Math.max(0, timerEndTime - Date.now());
-            setRemainingTime(remaining);
-
-            if (remaining <= 0) {
-                setRemainingTime(null);
-            }
-        };
-
-        // Update immediately
-        updateRemainingTime();
-
-        // Update every 100ms for smooth countdown
-        const interval = setInterval(updateRemainingTime, 100);
-
-        return () => clearInterval(interval);
-    }, [timerEndTime]);
-
-    const startTimer = useCallback((delay: number) => {
-        // Clear any existing timer first
-        if (timer) {
-            clearTimeout(timer);
-        }
-
-        const timeoutId = window.setTimeout(() => {
-            handleNext();
-        }, delay);
-        setTimer(timeoutId);
-        setTimerEndTime(Date.now() + delay);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [timer]);
-
-    const clearTimer = useCallback(() => {
-        if (timer) {
-            clearTimeout(timer);
-            setTimer(null);
-        }
-        setTimerEndTime(null);
-    }, [timer]);
-
-    const addXP = useCallback((xp: number) => setVocabularyXP(prev => prev + xp), []);
-
-    const addToPractice = useCallback((word: DatabasePracticeWord) => {
+    const addToPractice = useCallback((vocabularyResponse: VocabularyResponse) => {
+        const sourcePhrase = vocabularyResponse.sourcePhrase;
         setPracticeWordIds(prev => {
-            const exists = prev.find(w => w.id === word.id);
+            const exists = prev.find(w => w.phraseId === sourcePhrase.id);
             if (exists) {
                 // Reset correctCount to 0 if it already exists
                 return prev.map(w =>
-                    w.id === word.id
+                    w.phraseId === sourcePhrase.id
                         ? { ...w, correctCount: 0, lastPracticed: Date.now() }
                         : w
                 );
             } else {
-                const newMetadata: PracticeWordMetadata = {
-                    id: word.id,
+                const newMetadata: PracticePhrase = {
+                    phraseId: sourcePhrase.id,
                     correctCount: 0,
-                    lastPracticed: Date.now()
                 };
 
                 // Also add the most similar acceptable answer to practice
                 const practiceWordsToAdd = [newMetadata];
+                const targetWords = vocabularyResponse.targetOptions;
 
-                if (word.acceptableAnswers && word.acceptableAnswers.length >= 1) {
-                    // Find the most similar acceptable answer (excluding the main one)
-                    const mostSimilar = word.acceptableAnswers
-                        .filter(answer => answer.id !== word.id)
-                        .sort((a, b) => b.similarity - a.similarity)[0];
+                if (targetWords && targetWords.length >= 1) {
+                    const mostSimilar = targetWords[0];
 
-                    if (mostSimilar && !prev.find(w => w.id === mostSimilar.id)) {
+                    if (mostSimilar && !prev.find(w => w.phraseId === mostSimilar.id)) {
                         practiceWordsToAdd.push({
-                            id: mostSimilar.id,
+                            phraseId: mostSimilar.id,
                             correctCount: 0,
-                            lastPracticed: Date.now()
                         });
                     }
                 }
@@ -230,51 +156,19 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
                 return [...prev, ...practiceWordsToAdd];
             }
         });
-    }, []);
+    }, [setPracticeWordIds]);
 
-    const incrementCorrectCount = useCallback((wordId: number) => {
-        setPracticeWordIds(prev => prev.map(w =>
-            w.id === wordId
-                ? { ...w, correctCount: w.correctCount + 1, lastPracticed: Date.now() }
+    const incrementCorrectCount = useCallback((phraseId: number) => {
+        setPracticeWordIds(prev => {
+            if (prev.find(w => w.phraseId === phraseId) === undefined) {
+                return prev;
+            }
+            return prev.map(w => w.phraseId === phraseId
+                ? { ...w, correctCount: w.correctCount + 1 }
                 : w
-        ));
-    }, []);
-
-    // Load practice words from local storage on mount
-    useEffect(() => {
-        const saved = localStorage.getItem(STORAGE_KEYS.PRACTICE_WORDS);
-        if (saved) {
-            try {
-                const parsedWords = JSON.parse(saved);
-                setPracticeWordIds(parsedWords);
-            } catch (error) {
-                console.error('Failed to load practice words from storage:', error);
-            }
-        }
-
-        // Load XP from local storage
-        const savedXP = localStorage.getItem(STORAGE_KEYS.VOCABULARY_XP);
-        if (savedXP) {
-            try {
-                const xp = parseInt(savedXP, 10);
-                if (!isNaN(xp)) {
-                    setVocabularyXP(xp);
-                }
-            } catch (error) {
-                console.error('Failed to load XP from storage:', error);
-            }
-        }
-    }, []);
-
-    // Save practice words to local storage whenever they change
-    useEffect(() => {
-        localStorage.setItem(STORAGE_KEYS.PRACTICE_WORDS, JSON.stringify(practiceWordIds));
-    }, [practiceWordIds]);
-
-    // Save XP to local storage whenever it changes
-    useEffect(() => {
-        localStorage.setItem(STORAGE_KEYS.VOCABULARY_XP, vocabularyXP.toString());
-    }, [vocabularyXP]);
+            );
+        });
+    }, [setPracticeWordIds]);
 
     // Clean up practice words that have reached max correct count
     useEffect(() => {
@@ -283,65 +177,53 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             // Only update if the filter actually removed items
             return filtered.length !== prev.length ? filtered : prev;
         });
-    }, [practiceWordIds]);
+    }, [practiceWordIds, setPracticeWordIds]);
 
     // Local component state
-    const [currentWord, setCurrentWord] = useState<DatabasePracticeWord | null>(null);
+    const [currentWord, setCurrentWord] = useState<VocabularyResponse | null>(null);
     const [userInput, setUserInput] = useState('');
     const [result, setResult] = useState<QuizResult>('incorrect');
     const [isEditable, setIsEditable] = useState(true);
-    const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
     const [explanation, setExplanation] = useState<Explanation | null>(null);
     const [loadingExplanation, setLoadingExplanation] = useState(false);
     const [isInitialized, setIsInitialized] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [databaseStats, setDatabaseStats] = useState<DatabaseStatsResponse | null>(null);
+    const [databaseStats, setDatabaseStats] = useState<StatsResponse | null>(null);
+
+    const direction: Direction | null = useMemo(() => {
+        if (!currentWord) {
+            return null;
+        }
+        return {
+            from: currentWord.sourcePhrase.language,
+            to: currentWord.targetOptions[0]!.language,
+        } as Direction;
+    }, [currentWord]);
 
     /**
      * Loads a new random word from the database API
      */
-    const loadNewWord = useCallback(async () => {
+    const loadRandomWord = useCallback(async () => {
         try {
             setError(null);
 
-            const wordData = await DatabaseApiClient.getRandomWord();
+            const wordData = await DatabaseVocabularyApi.getRandomWord(LANGUAGES);
 
             if (!wordData) {
                 throw new Error('No words available from database');
             }
 
-            // Convert database response to practice word format
-            // The sourcePhrase and targetOptions depend on direction:
-            // - For 'pt-to-en': sourcePhrase is PT, targetOptions are EN
-            // - For 'en-to-pt': sourcePhrase is EN, targetOptions are PT
-            const practiceWord: DatabasePracticeWord = {
-                id: wordData.sourcePhrase.id,
-                translation_pt: wordData.direction === 'pt-to-en'
-                    ? wordData.sourcePhrase.phrase
-                    : wordData.targetOptions[0]?.phrase || '',
-                translation_en: wordData.direction === 'en-to-pt'
-                    ? wordData.sourcePhrase.phrase
-                    : wordData.targetOptions[0]?.phrase || '',
-                relative_frequency: wordData.sourcePhrase.relativeFrequency || 0,
-                category: null,
-                correctCount: 0,
-                direction: wordData.direction,
-                acceptableAnswers: wordData.targetOptions
-            };
+            setCurrentWord(wordData);
 
-            setCurrentWord(practiceWord);
-            setQuestionStartTime(Date.now());
-
-            // Auto-speak Portuguese if showing Portuguese to English
-            if (practiceWord.direction === 'pt-to-en') {
-                setTimeout(() => speakPortuguese(practiceWord.translation_pt), 100);
+            // Auto-speak Portuguese if not showing English
+            if (wordData.sourcePhrase.language !== 'en') {
+                speak(wordData.sourcePhrase);
             }
-
         } catch (err) {
             console.error('Failed to load word:', err);
             setError('Failed to load word from database. Please try again.');
         }
-    }, [speakPortuguese]);
+    }, []);
 
     /**
      * Loads a practice word by ID from the database API
@@ -352,7 +234,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
 
             if (practiceWordIds.length === 0) {
                 // Fall back to loading a new random word
-                await loadNewWord();
+                await loadRandomWord();
                 return;
             }
 
@@ -361,79 +243,68 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             const practiceWordMetadata = practiceWordIds[randomIndex];
 
             // Fetch the full word data from the API
-            const wordData = await DatabaseApiClient.getPracticeWord(practiceWordMetadata.id);
+            const wordData = await DatabaseVocabularyApi.getPracticeWord(practiceWordMetadata.phraseId, LANGUAGES);
 
             if (!wordData) {
                 // Remove the word from the practice list if not found
-                setPracticeWordIds(prev => prev.filter(w => w.id !== practiceWordMetadata.id));
+                setPracticeWordIds(prev => prev.filter(w => w.phraseId !== practiceWordMetadata.phraseId));
                 // Fall back to loading a new random word
-                await loadNewWord();
+                await loadRandomWord();
                 return;
             }
 
-            // Convert database response to practice word format
-            // The sourcePhrase and targetOptions depend on direction:
-            // - For 'pt-to-en': sourcePhrase is PT, targetOptions are EN
-            // - For 'en-to-pt': sourcePhrase is EN, targetOptions are PT
-            const practiceWord: DatabasePracticeWord = {
-                id: wordData.sourcePhrase.id,
-                translation_pt: wordData.direction === 'pt-to-en'
-                    ? wordData.sourcePhrase.phrase
-                    : wordData.targetOptions[0]?.phrase || '',
-                translation_en: wordData.direction === 'en-to-pt'
-                    ? wordData.sourcePhrase.phrase
-                    : wordData.targetOptions[0]?.phrase || '',
-                relative_frequency: wordData.sourcePhrase.relativeFrequency || 0,
-                category: null,
-                correctCount: practiceWordMetadata.correctCount,
-                direction: wordData.direction,
-                acceptableAnswers: wordData.targetOptions
-            };
+            setCurrentWord(wordData);
 
-            setCurrentWord(practiceWord);
-            setQuestionStartTime(Date.now());
-
-            // Auto-speak Portuguese if showing Portuguese to English
-            if (practiceWord.direction === 'pt-to-en') {
-                setTimeout(() => speakPortuguese(practiceWord.translation_pt), 100);
+            // Auto-speak Portuguese if not showing English
+            if (wordData.sourcePhrase.language !== 'en') {
+                speak(wordData.sourcePhrase);
             }
 
         } catch (err) {
             console.error('Failed to load practice word:', err);
             setError('Failed to load practice word from database. Please try again.');
         }
-    }, [practiceWordIds, speakPortuguese, loadNewWord]);
+    }, [practiceWordIds, loadRandomWord, setPracticeWordIds]);
 
     /**
      * Validates an answer using local logic with acceptable answers
+     * 
+     * Returns null if invalid
      */
-    const validateAnswer = useCallback((answer: string): boolean => {
-        if (!currentWord?.acceptableAnswers) return false;
+    const validateAnswer = useCallback((answer: string): PhraseWithSimilarity | null => {
+        if (!currentWord?.targetOptions) return null;
 
         const normalizedAnswer = normalizeText(answer);
 
-        return currentWord.acceptableAnswers.some(acceptable =>
+        return currentWord.targetOptions.find(acceptable =>
             normalizeText(acceptable.phrase) === normalizedAnswer
-        );
-    }, [currentWord]);
+        ) || null;
+    }, [currentWord?.targetOptions]);
 
     /**
      * Chooses whether to load a practice word or a new random word
      */
     const loadNextWord = useCallback(async () => {
-        const practiceChance = practiceWordIds.length > 0
-            ? CONFIG.BASE_PRACTICE_CHANCE + (0.9 - CONFIG.BASE_PRACTICE_CHANCE) * (1 - Math.exp(-practiceWordIds.length / 8))
-            : 0;
+        const practiceChance = CONFIG.BASE_PRACTICE_CHANCE + (0.9 - CONFIG.BASE_PRACTICE_CHANCE) * (1 - Math.exp(-practiceWordIds.length / 8));
 
-        const shouldUsePractice = practiceWordIds.length > 0 &&
+        const shouldUsePractice = hasPracticeWords &&
             Math.random() < practiceChance;
 
         if (shouldUsePractice) {
             await loadPracticeWord();
         } else {
-            await loadNewWord();
+            await loadRandomWord();
         }
-    }, [practiceWordIds, loadPracticeWord, loadNewWord]);
+    }, [hasPracticeWords, practiceWordIds.length, loadPracticeWord, loadRandomWord]);
+
+    useEffect(() => {
+        setResult('incorrect');
+        setUserInput('');
+        setIsEditable(true);
+        setExplanation(null);
+        setError(null);
+        lastQuestionRevealTimeRef.current = Date.now();
+    }, [currentWord]);
 
     /**
      * Handles user input changes and checks for correct answers
@@ -447,7 +318,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         const isCorrect = validateAnswer(value);
 
         if (isCorrect) {
-            const responseTime = Date.now() - (questionStartTime || Date.now());
+            const responseTime = Date.now() - (lastQuestionRevealTimeRef.current);
             const xpGained = calculateXP(responseTime);
 
             // Award XP and update stats
@@ -455,23 +326,20 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             incrementTodayCount();
 
             // Increment correct count for practice words
-            if (currentWord.correctCount !== undefined) {
-                incrementCorrectCount(currentWord.id);
-            }
+            incrementCorrectCount(currentWord.sourcePhrase.id);
 
             // Update UI state
             setResult('correct');
             setIsEditable(false);
-            startTimer(CONFIG.CORRECT_DELAY);
 
-            // Speak the word if going to Portuguese
-            if (currentWord.direction === 'en-to-pt') {
-                speakPortuguese(currentWord.translation_pt);
+            // Speak the word if it's not English
+            if (isCorrect.language !== 'en') {
+                speak(isCorrect);
             }
         } else {
             setResult('incorrect');
         }
-    }, [currentWord, questionStartTime, addXP, incrementTodayCount, incrementCorrectCount, speakPortuguese, startTimer, validateAnswer]);
+    }, [currentWord, addXP, incrementTodayCount, incrementCorrectCount, validateAnswer]);
 
     /**
      * Reveals the correct answer and adds word to practice if needed
@@ -479,52 +347,51 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     const handleShow = useCallback(() => {
         if (!currentWord) return;
 
-        const correctAnswer = currentWord.direction === 'en-to-pt'
-            ? currentWord.translation_pt
-            : currentWord.translation_en;
+        const correctAnswer = currentWord.targetOptions[0];
 
-        setUserInput(correctAnswer);
+        setUserInput(correctAnswer.phrase);
         setResult('revealed');
         setIsEditable(false);
-        startTimer(CONFIG.REVEAL_DELAY);
 
         // Speak the Portuguese word
-        speakPortuguese(currentWord.translation_pt);
+        if (correctAnswer.language !== 'en') {
+            speak(correctAnswer);
+        }
 
         // Add to practice list
         addToPractice(currentWord);
-    }, [currentWord, speakPortuguese, startTimer, addToPractice]);
+    }, [currentWord, addToPractice]);
+
+    useEffect(() => {
+        if (result === 'correct' || result === 'revealed') {
+            const timeout = setTimeout(() => {
+                loadNextWord();
+            }, CONFIG.REVEAL_DELAY);
+
+            return () => {
+                clearTimeout(timeout);
+            };
+        } else {
+            return () => { };
+        }
+    }, [result, loadNextWord]);
 
     /**
      * Advances to the next word
      */
     const handleNext = useCallback(() => {
-        clearTimer();
-        setUserInput('');
-        setResult('incorrect');
-        setIsEditable(true);
-        setQuestionStartTime(Date.now());
-        setExplanation(null);
-        setError(null);
-
-        // Load next word (could be practice or new)
-        loadNextWord();
-    }, [clearTimer, loadNextWord]);
+        if (result === 'incorrect' || 'explained') {
+            loadNextWord();
+        }
+    }, [loadNextWord, result]);
 
     /**
      * Speaks the current word
      */
     const handleSpeak = useCallback(() => {
         if (!currentWord) return;
-
-        if (currentWord.direction === 'en-to-pt') {
-            // Speaking the English prompt
-            speak(currentWord.translation_en, 'en');
-        } else {
-            // Speaking the Portuguese word
-            speak(currentWord.translation_pt, 'pt');
-        }
-    }, [currentWord, speak]);
+        speak(currentWord.sourcePhrase);
+    }, [currentWord]);
 
     /**
      * Fetches and displays detailed explanation for the current word using phrase ID
@@ -536,14 +403,22 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         setResult('explaining');
         setError(null);
 
+        const sourcePhraseId = currentWord.sourcePhrase.id; // The word that was shown to the user
+        const expectedAnswer = currentWord.targetOptions[0]!;
+        const expectedAnswerId = expectedAnswer.id; // The most similar acceptable answer
+
+        // Show the correct answer
+        setUserInput(expectedAnswer.phrase);
+
+        // Speak the Portuguese word
+        if (expectedAnswer.language !== 'en') {
+            speak(expectedAnswer);
+        } else {
+            speak(currentWord.sourcePhrase);
+        }
+        addToPractice(currentWord);
+
         try {
-            const sourcePhraseId = currentWord.id; // The word that was shown to the user
-            const expectedAnswerId = currentWord.acceptableAnswers[0]!.id; // The most similar acceptable answer
-
-            if (!expectedAnswerId) {
-                throw new Error("Could not determine the expected answer for the explanation.");
-            }
-
             const response = await fetch('/api/explain', {
                 method: 'POST',
                 headers: {
@@ -566,15 +441,6 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             setExplanation(explanationData);
             setResult('explained');
 
-            // Show the correct answer
-            const correctAnswer = currentWord.direction === 'en-to-pt'
-                ? currentWord.translation_pt
-                : currentWord.translation_en;
-            setUserInput(correctAnswer);
-
-            // Speak the Portuguese word
-            speakPortuguese(currentWord.translation_pt);
-            addToPractice(currentWord);
         } catch (err) {
             console.error('Failed to explain word:', err);
             setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -582,7 +448,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             setLoadingExplanation(false);
             // Do not automatically advance, let user review explanation
         }
-    }, [currentWord, authToken, speakPortuguese, addToPractice]);
+    }, [currentWord, authToken, addToPractice]);
 
     /**
      * Dismisses the current error message
@@ -591,6 +457,15 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         setError(null);
     }, []);
 
+    const loadNextRef = useRef(null as (() => Promise<void>) | null);
+
+    loadNextRef.current = async () => {
+        if (practiceWordIds.length > 0) {
+            await loadPracticeWord();
+        } else {
+            await loadRandomWord();
+        }
+    };
     /**
      * Initialize the application by loading database stats and first word
      */
@@ -599,18 +474,17 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             setError(null);
 
             // Load database statistics
-            const stats = await DatabaseApiClient.getStats();
+            const stats = await DatabaseVocabularyApi.getStats();
             setDatabaseStats(stats);
 
-            // Load first word (start with a new random word)
-            await loadNewWord();
+            loadNextRef.current?.();
 
             setIsInitialized(true);
         } catch (err) {
             console.error('Failed to initialize:', err);
             setError('Failed to initialize the application. Please refresh the page.');
         }
-    }, [loadNewWord]);
+    }, []);
 
     // Initialize on provider mount
     useEffect(() => {
@@ -633,8 +507,6 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         userInput,
         result,
         isEditable,
-        remainingTime,
-        questionStartTime,
         explanation,
         loadingExplanation,
         isInitialized,
@@ -642,6 +514,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         isAuthenticated,
         databaseStats,
         dailyStats: dailyStatsDisplay,
+        direction,
 
         // Actions
         handleInputChange,
@@ -649,7 +522,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         handleNext,
         handleSpeak,
         handleExplain,
-        loadNewWord,
+        loadNewWord: loadRandomWord,
         loadPracticeWord,
         validateAnswer,
         dismissError,

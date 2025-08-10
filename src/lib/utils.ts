@@ -8,6 +8,7 @@
  * @version 1.0.0
  */
 
+import { Phrase } from "@/types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -28,4 +29,21 @@ export * from '@/utils/vocabulary';
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function speakPortuguese(phrase: string) {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(phrase);
+    utterance.lang = 'pt-PT';
+    speechSynthesis.speak(utterance);
+  }
+}
+
+export function speak(phrase: Phrase) {
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(phrase.phrase);
+    utterance.lang = phrase.language === 'pt' ? 'pt-PT' :
+      phrase.language === 'de' ? 'de-DE' : 'en-US';
+    speechSynthesis.speak(utterance);
+  }
 }

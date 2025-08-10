@@ -11,9 +11,10 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { VocabularyAPI, ImportResponse, PhrasePairImport } from '@/lib/database';
+import { VocabularyAPI, PhrasePairImport } from '@/lib/database';
 import { formatSqlError } from '@/lib/database';
 import { withApiAuth } from '@/lib/auth';
+import { ImportResponse } from '@/types';
 
 /**
  * Request body interface
