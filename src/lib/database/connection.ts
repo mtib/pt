@@ -383,3 +383,72 @@ export function formatSqlError(error: any): string {
 
 // Export the singleton instance for backward compatibility
 export default getDatabase();
+
+/**
+ * Get a database connection for external use
+ * This function can be used to obtain a database connection outside the
+ * DatabaseManager context, but care should be taken to manage the connection
+ * properly (e.g., closing it when done).
+ */
+export async function getDatabaseConnection() {
+    const dbManager = DatabaseManager.getInstance();
+    await dbManager.initialize(); // Ensure the database is initialized
+    return dbManager.getConnection();
+}
+
+/**
+ * Insert a new phrase or find an existing one in the database
+ * This function attempts to insert a new phrase into the database, and if
+ * a conflict occurs (e.g., due to a unique constraint), it retrieves the
+ * existing phrase instead.
+ * 
+ * @param db - The database connection
+ * @param phrase - The phrase text to insert or find
+ * @param language - The language of the phrase
+ * @returns The ID of the inserted or found phrase
+ */
+export async function insertOrFindPhrase(db: sqlite3.Database, phrase: string, language: string): Promise<number> {
+    const insertSql = `INSERT INTO phrases (phrase, language) VALUES (?, ?)`;
+    const conflictSql = `SELECT id FROM phrases WHERE phrase = ? AND language = ?`;
+
+    try {
+        // Attempt to insert the new phrase
+        await db.run(insertSql, [phrase, language]);
+    } catch (error) {
+        // If a conflict occurs, retrieve the existing phrase ID
+        if (isSqliteError(error) && error.code === 'SQLITE_CONSTRAINT') {
+            const row = await db.get(conflictSql, [phrase, language]);
+            if (row && hasIdProperty(row)) {
+                return row.id;
+            }
+        }
+
+        // Example usage of hasLastIdProperty
+        if (hasLastIdProperty(db)) {
+            console.log('Last inserted ID:', db.lastId);
+        }
+
+        throw error;
+    }
+
+    // Return the ID of the newly inserted phrase
+    if (hasLastIdProperty(db)) {
+        return db.lastId;
+    }
+    return -1;
+}
+
+// Type guard to check if an error has a 'code' property
+function isSqliteError(error: unknown): error is { code: string; } {
+    return typeof error === 'object' && error !== null && 'code' in error && typeof (error as any).code === 'string';
+}
+
+// Type guard to check if a row has an 'id' property
+function hasIdProperty(row: unknown): row is { id: number; } {
+    return typeof row === 'object' && row !== null && 'id' in row && typeof (row as any).id === 'number';
+}
+
+// Type guard to check if db has a 'lastId' property
+function hasLastIdProperty(db: unknown): db is { lastId: number; } {
+    return typeof db === 'object' && db !== null && 'lastId' in db && typeof (db as any).lastId === 'number';
+}

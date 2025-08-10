@@ -85,6 +85,8 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+COPY scripts/ ./scripts/
+
 # Add metadata labels
 ARG BUILD_DATE
 ARG VCS_REF

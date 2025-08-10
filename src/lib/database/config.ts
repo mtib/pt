@@ -66,8 +66,7 @@ export const SQL_QUERIES = {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             phrase TEXT NOT NULL,
             language TEXT NOT NULL,
-            relative_frequency REAL,
-            category TEXT
+            relative_frequency REAL
         )
     `,
 
@@ -84,12 +83,19 @@ export const SQL_QUERIES = {
         )
     `,
 
+    /** Create categories table */
+    CREATE_CATEGORIES_TABLE: `
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE
+        )
+    `,
+
     /** Create indexes for better query performance */
     CREATE_INDEXES: [
         'CREATE INDEX IF NOT EXISTS idx_phrases_language ON phrases(language)',
         'CREATE INDEX IF NOT EXISTS idx_phrases_phrase ON phrases(phrase)',
         'CREATE INDEX IF NOT EXISTS idx_phrases_frequency ON phrases(relative_frequency)',
-        'CREATE INDEX IF NOT EXISTS idx_phrases_category ON phrases(category)',
         'CREATE INDEX IF NOT EXISTS idx_similarity_from ON similarity(from_phrase_id)',
         'CREATE INDEX IF NOT EXISTS idx_similarity_to ON similarity(to_phrase_id)',
         'CREATE INDEX IF NOT EXISTS idx_similarity_score ON similarity(similarity)',
@@ -98,14 +104,14 @@ export const SQL_QUERIES = {
 
     /** Insert a new phrase */
     INSERT_PHRASE: `
-        INSERT INTO phrases (phrase, language, relative_frequency, category)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO phrases (phrase, language, relative_frequency)
+        VALUES (?, ?, ?)
     `,
 
     /** Insert a new similarity relationship */
     INSERT_SIMILARITY: `
-        INSERT OR IGNORE INTO similarity (from_phrase_id, to_phrase_id, similarity)
-        VALUES (?, ?, ?)
+        INSERT OR IGNORE INTO similarity (from_phrase_id, to_phrase_id, similarity, category_id)
+        VALUES (?, ?, ?, ?)
     `,
 
     /** Get a random phrase by language */
@@ -190,27 +196,27 @@ export const SQL_QUERIES = {
     DELETE_PHRASE_BY_ID: 'DELETE FROM phrases WHERE id = ?',
 
     /** Get all distinct categories */
-    GET_ALL_CATEGORIES: 'SELECT DISTINCT category FROM phrases WHERE category IS NOT NULL ORDER BY category',
+    GET_ALL_CATEGORIES: 'SELECT id, name FROM categories ORDER BY name',
 
     /** Search for phrases (fuzzy) */
     SEARCH_PHRASES: `
-        SELECT id, phrase, language, category 
-        FROM phrases 
-        WHERE phrase LIKE ? 
+        SELECT p.id, p.phrase, p.language, c.name AS category 
+        FROM phrases p
+        LEFT JOIN similarity s ON p.id = s.from_phrase_id
+        LEFT JOIN categories c ON s.category_id = c.id
+        WHERE p.phrase LIKE ? 
         LIMIT 100
     `,
 
     /** Get orphan phrases (phrases with no translations) */
     GET_ORPHAN_PHRASES: `
-        SELECT p.id, p.phrase, p.language, p.category
+        SELECT p.id, p.phrase, p.language
         FROM phrases p
         WHERE NOT EXISTS (
             SELECT 1
             FROM similarity s
-            JOIN phrases p2 ON s.to_phrase_id = p2.id
-            WHERE s.from_phrase_id = p.id AND p.language != p2.language
+            WHERE s.from_phrase_id = p.id
         )
-        ORDER BY p.language, p.phrase
     `,
 } as const;
 
@@ -301,8 +307,7 @@ export interface PhrasePairImport {
     phrase2: string;
     language2: string;
     similarity: number;
-    category1?: string;
-    category2?: string;
+    categoryId?: number; // Numerical ID of the category that applies to the pair
 }
 
 export interface ImportDataResponse {

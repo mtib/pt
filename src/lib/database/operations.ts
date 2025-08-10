@@ -9,7 +9,7 @@
  * @version 2.0.0
  */
 
-import { getDatabase } from './connection';
+import { getDatabase, getDatabaseConnection, insertOrFindPhrase } from './connection';
 import {
     VOCAB_CONFIG,
     SQL_QUERIES,
@@ -28,14 +28,13 @@ import { normalizeText } from '@/utils/vocabulary';
 export async function insertPhrase(
     phrase: string,
     language: SupportedLanguage,
-    relativeFrequency?: number,
-    category?: string
+    relativeFrequency?: number
 ): Promise<number> {
     const db = getDatabase();
 
     return db.runQueryWithLastId(
         SQL_QUERIES.INSERT_PHRASE,
-        [phrase, language, relativeFrequency, category]
+        [phrase, language, relativeFrequency]
     );
 }
 
@@ -65,19 +64,20 @@ async function insertSimilarityWithoutTransaction(
     fromPhraseId: number,
     toPhraseId: number,
     similarity: number,
-    bidirectional: boolean = true
+    bidirectional: boolean = true,
+    categoryId?: number // Add categoryId as an optional parameter
 ): Promise<void> {
     // Insert the primary relationship
     await db.runQuery(
         SQL_QUERIES.INSERT_SIMILARITY,
-        [fromPhraseId, toPhraseId, similarity]
+        [fromPhraseId, toPhraseId, similarity, categoryId || null] // Include categoryId
     );
 
     // Insert the reverse relationship if bidirectional
     if (bidirectional && fromPhraseId !== toPhraseId) {
         await db.runQuery(
             SQL_QUERIES.INSERT_SIMILARITY,
-            [toPhraseId, fromPhraseId, similarity]
+            [toPhraseId, fromPhraseId, similarity, categoryId || null] // Include categoryId
         );
     }
 }
@@ -259,28 +259,26 @@ export async function importVocabularyFromPairs(
                         phrase1Id = await insertPhrase(
                             phrase1,
                             pair.language1 as SupportedLanguage,
-                            pair.similarity, // Use similarity as relative frequency
-                            pair.category1
+                            pair.similarity // Use similarity as relative frequency
                         );
                     }
 
-                    // Insert second phrase if it doesn't exist
                     if (!phrase2Id) {
                         phrase2Id = await insertPhrase(
                             phrase2,
                             pair.language2 as SupportedLanguage,
-                            pair.similarity, // Use similarity as relative frequency  
-                            pair.category2
+                            pair.similarity // Use similarity as relative frequency
                         );
                     }
 
-                    // Create similarity relationship
+                    // Create similarity relationship with category
                     await insertSimilarityWithoutTransaction(
                         db,
                         phrase1Id,
                         phrase2Id,
                         pair.similarity,
-                        true // bidirectional
+                        true, // bidirectional
+                        pair.categoryId // Pass categoryId
                     );
 
                     imported++;
@@ -459,10 +457,16 @@ export async function batchInsertVocabulary(
                 const id = await insertPhrase(
                     phrase.phrase,
                     phrase.language,
-                    phrase.relativeFrequency,
-                    phrase.category
+                    phrase.relativeFrequency
                 );
                 phraseMap.set(key, id);
+
+                if (phrase.category) {
+                    await db.runQuery(
+                        `UPDATE similarity SET category_id = ? WHERE from_phrase_id = ?`,
+                        [phrase.category, id]
+                    );
+                }
             }
         }
 
@@ -525,7 +529,7 @@ export async function searchPhrasePairs(query: string): Promise<Record<string, {
         toLanguage: string;
     }>(
         `SELECT
-            COALESCE(p1.category, 'Uncategorized') AS category,
+            COALESCE(c.name, 'Uncategorized') AS category,
             p1.id AS fromPhraseId,
             p1.phrase AS fromPhrase,
             p1.language AS fromLanguage,
@@ -535,8 +539,9 @@ export async function searchPhrasePairs(query: string): Promise<Record<string, {
          FROM similarity s
          JOIN phrases p1 ON s.from_phrase_id = p1.id
          JOIN phrases p2 ON s.to_phrase_id = p2.id
+         LEFT JOIN categories c ON s.category_id = c.id
          WHERE p1.phrase LIKE ? OR p2.phrase LIKE ?
-         ORDER BY p1.category`,
+         ORDER BY c.name`,
         [searchQuery, searchQuery]
     );
 
@@ -559,4 +564,36 @@ export async function searchPhrasePairs(query: string): Promise<Record<string, {
         });
         return acc;
     }, {} as Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; }[]>);
+}
+
+/**
+ * Migrate vocabulary data from phrase pairs
+ * This function is used to migrate data to the new schema with category IDs.
+ */
+export async function migrateVocabulary(pairs: PhrasePairImport[]) {
+    const db = await getDatabaseConnection();
+
+    try {
+        await db.exec('BEGIN TRANSACTION');
+
+        for (const pair of pairs) {
+            const { phrase1, phrase2, language1, language2, similarity, categoryId } = pair;
+
+            const fromPhraseId = await insertOrFindPhrase(db, phrase1, language1);
+            const toPhraseId = await insertOrFindPhrase(db, phrase2, language2);
+
+            await db.run(
+                `INSERT INTO similarity (from_phrase_id, to_phrase_id, similarity, category_id)
+                 VALUES (?, ?, ?, ?)`,
+                [fromPhraseId, toPhraseId, similarity, categoryId || null]
+            ); // Replaced `exec` with `run` for parameterized query
+        }
+
+        await db.exec('COMMIT');
+    } catch (error) {
+        await db.exec('ROLLBACK');
+        throw error;
+    } finally {
+        db.close();
+    }
 }

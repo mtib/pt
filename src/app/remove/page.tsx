@@ -15,7 +15,7 @@ export default function RemovePage() {
     const { authToken } = useAuth();
     const { toast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; }[]>>({});
+    const [searchResults, setSearchResults] = useState<Record<string, { fromPhrase: DbPhrase; toPhrase: DbPhrase; category: string | null; }[]>>({});
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -50,46 +50,33 @@ export default function RemovePage() {
     const handleDeletePair = async (phrase1Id: number, phrase2Id: number) => {
         if (!authToken) return;
         try {
-            const res = await fetch(`/api/vocabulary/deletePair?phrase1=${phrase1Id}&phrase2=${phrase2Id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${authToken}` },
+            const res = await fetch(`/api/vocabulary/deletePair`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ phrase1Id, phrase2Id })
             });
-
             if (res.ok) {
-                // Update the state locally by removing both a->b and b->a pairs
-                setSearchResults((prevResults) => {
-                    const updatedResults = { ...prevResults };
-                    for (const category in updatedResults) {
-                        updatedResults[category] = updatedResults[category].filter(
-                            ({ fromPhrase, toPhrase }) =>
-                                !(
-                                    (fromPhrase.id === phrase1Id && toPhrase.id === phrase2Id) ||
-                                    (fromPhrase.id === phrase2Id && toPhrase.id === phrase1Id)
-                                )
-                        );
-
-                        // Remove empty categories
-                        if (updatedResults[category].length === 0) {
-                            delete updatedResults[category];
-                        }
-                    }
-                    return updatedResults;
-                });
-
                 toast({
                     title: "Success",
                     description: "Phrase pair deleted successfully.",
                 });
+                setSearchResults((prev) => {
+                    const updated = { ...prev };
+                    delete updated[`${phrase1Id}-${phrase2Id}`];
+                    return updated;
+                });
             } else {
-                const errorData = await res.json();
                 toast({
                     title: "Error",
-                    description: `Failed to delete phrase pair: ${errorData.message || 'Unknown error'}`,
+                    description: "Failed to delete phrase pair.",
                     variant: "destructive",
                 });
             }
         } catch (error) {
-            console.error("Error handling delete pair response:", error);
+            console.error("Failed to delete phrase pair", error);
             toast({
                 title: "Error",
                 description: "An unexpected error occurred.",

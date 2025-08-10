@@ -20,21 +20,38 @@ Stores individual words and phrases in different languages.
 | phrase | TEXT | NOT NULL | The actual word or phrase text |
 | language | TEXT | NOT NULL | Language code ("en" for English, "pt" for Portuguese) |
 | relative_frequency | REAL | NULLABLE | Frequency of the phrase in the language (0.0 to 1.0), null if unknown |
-| category | TEXT | NULLABLE | Category classification, always null for now (reserved for future use) |
 
 **Indexes:**
 - `idx_phrases_language` on `language`
 - `idx_phrases_phrase` on `phrase`
 - `idx_phrases_frequency` on `relative_frequency`
-- `idx_phrases_category` on `category`
 
 **Example data:**
 ```sql
-INSERT INTO phrases (phrase, language, relative_frequency, category) VALUES
-('hello', 'en', 0.95, NULL),
-('olá', 'pt', 0.92, NULL),
-('house', 'en', 0.85, NULL),
-('casa', 'pt', 0.88, NULL);
+INSERT INTO phrases (phrase, language, relative_frequency) VALUES
+('hello', 'en', 0.95),
+('olá', 'pt', 0.92),
+('house', 'en', 0.85),
+('casa', 'pt', 0.88);
+```
+
+### categories
+
+Stores category classifications for relationships.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | INTEGER | PRIMARY KEY, AUTOINCREMENT | Unique identifier for each category |
+| name | TEXT | NOT NULL, UNIQUE | Name of the category |
+
+**Indexes:**
+- `idx_categories_name` on `name`
+
+**Example data:**
+```sql
+INSERT INTO categories (name) VALUES
+('greeting'),
+('household');
 ```
 
 ### similarity
@@ -47,25 +64,28 @@ Stores relationships between phrases, including translations and synonyms.
 | from_phrase_id | INTEGER | NOT NULL, FOREIGN KEY | Reference to phrases.id (source phrase) |
 | to_phrase_id | INTEGER | NOT NULL, FOREIGN KEY | Reference to phrases.id (target phrase) |
 | similarity | REAL | NOT NULL, CHECK(similarity >= 0.0 AND similarity <= 1.0) | Similarity score between phrases |
+| category_id | INTEGER | NULLABLE, FOREIGN KEY | Reference to categories.id |
 
 **Foreign Key Constraints:**
 - `from_phrase_id` REFERENCES `phrases(id)` ON DELETE CASCADE
 - `to_phrase_id` REFERENCES `phrases(id)` ON DELETE CASCADE
+- `category_id` REFERENCES `categories(id)` ON DELETE SET NULL
 
 **Indexes:**
 - `idx_similarity_from` on `from_phrase_id`
 - `idx_similarity_to` on `to_phrase_id`
 - `idx_similarity_score` on `similarity`
+- `idx_similarity_category` on `category_id`
 - `idx_similarity_bidirectional` on `from_phrase_id, to_phrase_id` (unique)
 
 **Example data:**
 ```sql
 -- Translation relationship (high similarity)
-INSERT INTO similarity (from_phrase_id, to_phrase_id, similarity) VALUES
-(1, 2, 0.9),  -- 'hello' -> 'olá'
-(2, 1, 0.9),  -- 'olá' -> 'hello' (bidirectional)
-(3, 4, 0.9),  -- 'house' -> 'casa'
-(4, 3, 0.9);  -- 'casa' -> 'house'
+INSERT INTO similarity (from_phrase_id, to_phrase_id, similarity, category_id) VALUES
+(1, 2, 0.9, 1),  -- 'hello' -> 'olá' (greeting)
+(2, 1, 0.9, 1),  -- 'olá' -> 'hello' (greeting, bidirectional)
+(3, 4, 0.9, 2),  -- 'house' -> 'casa' (household)
+(4, 3, 0.9, 2);  -- 'casa' -> 'house' (household)
 ```
 
 ## Relationship Types
@@ -98,10 +118,12 @@ SELECT
     p_to.id,
     p_to.phrase,
     p_to.language,
-    s.similarity
+    s.similarity,
+    c.name AS category
 FROM similarity s
 JOIN phrases p_from ON s.from_phrase_id = p_from.id
 JOIN phrases p_to ON s.to_phrase_id = p_to.id
+LEFT JOIN categories c ON s.category_id = c.id
 WHERE p_from.id = ? 
     AND p_from.language != p_to.language
     AND s.similarity >= 0.5
@@ -122,10 +144,12 @@ LIMIT 1;
 SELECT 
     p_to.id,
     p_to.phrase,
-    s.similarity
+    s.similarity,
+    c.name AS category
 FROM similarity s
 JOIN phrases p_from ON s.from_phrase_id = p_from.id
 JOIN phrases p_to ON s.to_phrase_id = p_to.id
+LEFT JOIN categories c ON s.category_id = c.id
 WHERE p_from.id = ? 
     AND p_from.language = p_to.language
     AND s.similarity >= 0.6

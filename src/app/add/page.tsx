@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ export default function AddPage() {
     const [english, setEnglish] = useState('');
     const [category, setCategory] = useState('');
     const [categories, setCategories] = useState<{ value: string; label: string; }[]>([]);
+    const [newCategory, setNewCategory] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -28,7 +29,14 @@ export default function AddPage() {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    setCategories(data.map((c: string) => ({ value: c, label: c })));
+                    console.log("Fetched categories data:", data); // Debugging log
+                    if (Array.isArray(data)) {
+                        setCategories(data.map((c: { id: number; name: string; }) => ({ value: c.id.toString(), label: c.name })));
+                    } else {
+                        console.error("Unexpected data format:", data);
+                    }
+                } else {
+                    console.error("Failed to fetch categories, status:", res.status);
                 }
             } catch (error) {
                 console.error("Failed to fetch categories", error);
@@ -37,7 +45,7 @@ export default function AddPage() {
         fetchCategories();
     }, [authToken]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmitPhrase = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!portuguese || !english || !authToken) {
             toast({
@@ -48,27 +56,24 @@ export default function AddPage() {
             return;
         }
         setIsLoading(true);
-
         try {
             const res = await fetch('/api/vocabulary/import', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`,
+                    'Authorization': `Bearer ${authToken}`
                 },
                 body: JSON.stringify({
                     data: {
                         phrase1: portuguese,
-                        language1: 'pt',
                         phrase2: english,
+                        language1: 'pt',
                         language2: 'en',
-                        similarity: 0.95, // High similarity for manual additions
-                        category1: category || undefined,
-                        category2: category || undefined,
+                        similarity: 1.0,
+                        category: category ? parseInt(category) : null
                     }
-                }),
+                })
             });
-
             if (res.ok) {
                 toast({
                     title: "Success",
@@ -78,14 +83,15 @@ export default function AddPage() {
                 setEnglish('');
                 setCategory('');
             } else {
-                const errorData = await res.json();
+                const error = await res.json();
                 toast({
                     title: "Error",
-                    description: `Failed to add phrase pair: ${errorData.message || 'Unknown error'}`,
+                    description: error.message || "Failed to add phrase pair.",
                     variant: "destructive",
                 });
             }
-        } catch {
+        } catch (error) {
+            console.error("Failed to add phrase pair", error);
             toast({
                 title: "Error",
                 description: "An unexpected error occurred.",
@@ -96,12 +102,53 @@ export default function AddPage() {
         }
     };
 
-    const options = useMemo(() => {
-        if (categories.find(cat => cat.value === category) || !category) {
-            return categories;
+    const handleCreateCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newCategory || !authToken) {
+            toast({
+                title: "Error",
+                description: "Category name is required.",
+                variant: "destructive",
+            });
+            return;
         }
-        return [...categories, { value: category, label: category }];
-    }, [categories, category]);
+        setIsLoading(true);
+        try {
+            const res = await fetch('/api/vocabulary/categories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ name: newCategory })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setCategories((prev) => [...prev, { value: data.id.toString(), label: data.name }]);
+                setNewCategory('');
+                toast({
+                    title: "Success",
+                    description: "Category created successfully.",
+                });
+            } else {
+                const error = await res.json();
+                toast({
+                    title: "Error",
+                    description: error.message || "Failed to create category.",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error("Failed to create category", error);
+            toast({
+                title: "Error",
+                description: "An unexpected error occurred.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <AuthGuard>
@@ -112,7 +159,7 @@ export default function AddPage() {
                         <CardTitle>Add Phrase Pair</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmitPhrase} className="space-y-4">
                             <Input
                                 placeholder="Portuguese"
                                 value={portuguese}
@@ -126,14 +173,32 @@ export default function AddPage() {
                                 required
                             />
                             <Combobox
-                                items={options}
+                                items={categories}
                                 value={category}
                                 onChange={setCategory}
-                                placeholder="Select or create category..."
+                                placeholder="Select category..."
                                 allowCustomValue
                             />
                             <Button type="submit" disabled={isLoading}>
                                 {isLoading ? 'Adding...' : 'Add Phrase Pair'}
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+                <Card className="max-w-2xl mx-auto mt-4">
+                    <CardHeader>
+                        <CardTitle>Create New Category</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleCreateCategory} className="space-y-4">
+                            <Input
+                                placeholder="Category Name"
+                                value={newCategory}
+                                onChange={(e) => setNewCategory(e.target.value)}
+                                required
+                            />
+                            <Button type="submit" disabled={isLoading}>
+                                {isLoading ? 'Creating...' : 'Create Category'}
                             </Button>
                         </form>
                     </CardContent>

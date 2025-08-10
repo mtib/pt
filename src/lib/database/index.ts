@@ -88,3 +88,45 @@ export const VocabularyAPI = {
 
 // Export the API as default for convenience
 export default VocabularyAPI;
+
+/**
+ * Import vocabulary from phrase pairs with optional category handling
+ */
+import { getDatabaseConnection as dbConnection, insertOrFindPhrase as findPhrase } from './connection';
+
+export async function importVocabularyWithCategories(pairs: PhrasePairImport[], overwrite = false) {
+    const db = await dbConnection();
+
+    try {
+        await db.run('BEGIN TRANSACTION');
+
+        for (const pair of pairs) {
+            const { phrase1, phrase2, language1, language2, similarity, categoryId } = pair;
+
+            // Insert or find phrases
+            const fromPhraseId = await findPhrase(db, phrase1, language1);
+            const toPhraseId = await findPhrase(db, phrase2, language2);
+
+            // Insert similarity relationship with category
+            if (overwrite) {
+                await db.run(
+                    `DELETE FROM similarity WHERE from_phrase_id = ? AND to_phrase_id = ?`,
+                    [fromPhraseId, toPhraseId]
+                );
+            }
+
+            await db.run(
+                `INSERT INTO similarity (from_phrase_id, to_phrase_id, similarity, category_id)
+                 VALUES (?, ?, ?, ?)`,
+                [fromPhraseId, toPhraseId, similarity, categoryId || null]
+            );
+        }
+
+        await db.run('COMMIT');
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    } finally {
+        db.close();
+    }
+}

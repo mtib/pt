@@ -64,7 +64,7 @@ function validateRequestBody(body: unknown): body is ImportRequest {
             const pair = item as Record<string, unknown>;
             if (typeof pair.phrase1 !== 'string' || typeof pair.phrase2 !== 'string' ||
                 typeof pair.language1 !== 'string' || typeof pair.language2 !== 'string' ||
-                typeof pair.similarity !== 'number') {
+                typeof pair.similarity !== 'number' || (pair.category && typeof pair.category !== 'string')) {
                 return false;
             }
         }
@@ -73,7 +73,7 @@ function validateRequestBody(body: unknown): body is ImportRequest {
         const pair = candidate.data as Record<string, unknown>;
         if (typeof pair.phrase1 !== 'string' || typeof pair.phrase2 !== 'string' ||
             typeof pair.language1 !== 'string' || typeof pair.language2 !== 'string' ||
-            typeof pair.similarity !== 'number') {
+            typeof pair.similarity !== 'number' || (pair.category && typeof pair.category !== 'string')) {
             return false;
         }
     }
