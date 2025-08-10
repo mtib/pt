@@ -1,314 +1,132 @@
-# API Endpoints Documentation
+# API Endpoints
 
-## Overview
+This document reflects the current API implemented in `src/pages/api`.
 
-This document describes the new API endpoints for the database-backed vocabulary system.
+## Conventions
 
-## Base Configuration
+- Base path: `/api`
+- Content type: JSON for requests and responses
+- Success wrapper: Most endpoints return `{ success: boolean, data?: T, error?: string }`
+- CORS: Public endpoints set permissive CORS headers; admin endpoints require auth
 
-All API endpoints are located under `/api/` and return JSON responses.
+## Authentication
 
-### Error Respons### POST /api/vocabulary/import
+- Header: `Authorization: Bearer ${PRESHARED_KEY}`
+- Required for admin endpoints only: categories, search, orphans, deletePair, phrase delete, import
+- Configure `PRESHARED_KEY` in `.env`
 
-**Purpose**: Import phrase pairs into the vocabulary database (admin only)
+## Health
 
-**Authentication**: Requires `PRESHARED_KEY`
+GET `/api/health`
+- Purpose: Service health for CI/Docker
+- Response: `{ status: 'healthy' | 'unhealthy', timestamp, uptime, version, environment }`
 
-**Request Body**:
-```json
-{
-  "data": [
-    {
-      "phrase1": "hello",
-      "language1": "en",
-      "phrase2": "olá", 
-      "language2": "pt",
-      "similarity": 0.95,
-      "category": null
-    }
-  ],
-  "overwrite": false,
-  "authKey": "your-import-auth-key"
-}```typescript
-{
-  error: string;
-  details?: string; // Optional additional error information
-}
-```
+## Explanations (OpenAI)
 
-### Success Response Format
-Varies by endpoint, but generally includes:
-- `success: boolean`
-- Data fields specific to the endpoint
+POST `/api/explain`
+- Auth: Required (`Authorization: Bearer ...`)
+- Body: `{ sourcePhraseId: number, expectedAnswerId: number }`
+- Response: Explanation object
+  - Fields: `example, explanation, definition, grammar, facts, pronunciationIPA, pronunciationEnglish, synonyms, alternatives, word, englishReference`
+- Notes: Caches results under `cache/explanations/`
 
-## Endpoints
+## Vocabulary (information)
 
-### GET /api/vocabulary/random
+GET `/api/vocabulary`
+- Purpose: Guidance endpoint that summarizes DB status and points to the new routes
+- Response: `{ words: [], source: 'database', totalPhrases, message, newEndpoints }`
 
-Returns a random phrase for practice, with its possible translations/answers.
+## Vocabulary (public)
 
-#### Query Parameters
-- `language` (optional): Preferred source language ("en" or "pt"). If not provided, randomly selects between languages.
-
-#### Response Format
-```typescript
-{
-  success: true;
-  data: {
-    sourcePhrase: {
-      id: number;
-      phrase: string;
-      language: string;
-      relativeFrequency?: number;
-    };
-    targetOptions: Array<{
-      id: number;
-      phrase: string;
-      language: string;
-      similarity: number;
-      relativeFrequency?: number;
-    }>;
-    direction: "en-to-pt" | "pt-to-en";
-    acceptableSimilarity: number; // Minimum similarity threshold for correct answers
-  };
-}
-```
-
-#### Example Response
-```json
-{
-  "success": true,
-  "data": {
-    "sourcePhrase": {
-      "id": 1,
-      "phrase": "hello",
-      "language": "en",
-      "relativeFrequency": 0.95
-    },
-    "targetOptions": [
-      {
-        "id": 2,
-        "phrase": "olá",
-        "language": "pt",
-        "similarity": 0.9,
-        "relativeFrequency": 0.92
-      },
-      {
-        "id": 15,
-        "phrase": "oi",
-        "language": "pt",
-        "similarity": 0.8,
-        "relativeFrequency": 0.88
-      }
-    ],
-    "direction": "en-to-pt",
-    "acceptableSimilarity": 0.5
+GET `/api/vocabulary/random`
+- Query: `language=en|pt` (optional)
+- Response data shape:
+  ```ts
+  {
+    sourcePhrase: { id, phrase, language, relativeFrequency? },
+    targetOptions: Array<{ id, phrase, language, similarity, relativeFrequency? }>,
+    direction: 'en-to-pt' | 'pt-to-en',
+    acceptableSimilarity: number
   }
-}
-```
+  ```
+- Caching: Disabled (ensures randomness)
 
-### GET /api/vocabulary/practice/:phraseId
+GET `/api/vocabulary/practice/[phraseId]`
+- Path: `phraseId` is a positive integer
+- Response: Same shape as `/random`
+- Errors: `400` invalid id, `404` not found
+- Caching: Public for 5 minutes
 
-Returns practice data for a specific phrase by its ID.
-
-#### Path Parameters
-- `phraseId`: Integer ID of the phrase to practice
-
-#### Response Format
-```typescript
-{
-  success: true;
-  data: {
-    sourcePhrase: {
-      id: number;
-      phrase: string;
-      language: string;
-      relativeFrequency?: number;
-    };
-    targetOptions: Array<{
-      id: number;
-      phrase: string;
-      language: string;
-      similarity: number;
-      relativeFrequency?: number;
-    }>;
-    direction: "en-to-pt" | "pt-to-en";
-    acceptableSimilarity: number;
-  };
-}
-```
-
-#### Error Cases
-- `404`: Phrase ID not found
-- `400`: Invalid phrase ID format
-
-### POST /api/vocabulary/validate
-
-Validates a user's answer against the correct options.
-
-#### Request Body
-```typescript
-{
-  sourcePhraseId: number;
-  userAnswer: string;
-  acceptableSimilarity?: number; // Optional, defaults to CONFIG.ACCEPTABLE_SIMILARITY
-}
-```
-
-#### Response Format
-```typescript
-{
-  success: true;
-  data: {
-    isCorrect: boolean;
-    matchedPhrase?: {
-      id: number;
-      phrase: string;
-      similarity: number;
-    };
-    correctAnswers: Array<{
-      id: number;
-      phrase: string;
-      similarity: number;
-    }>;
-    normalizedUserInput: string;
-  };
-}
-```
-
-#### Example Response
-```json
-{
-  "success": true,
-  "data": {
-    "isCorrect": true,
-    "matchedPhrase": {
-      "id": 2,
-      "phrase": "olá",
-      "similarity": 0.9
-    },
-    "correctAnswers": [
-      {
-        "id": 2,
-        "phrase": "olá",
-        "similarity": 0.9
-      },
-      {
-        "id": 15,
-        "phrase": "oi",
-        "similarity": 0.8
-      }
-    ],
-    "normalizedUserInput": "ola"
+POST `/api/vocabulary/validate`
+- Body: `{ sourcePhraseId: number, userAnswer: string, acceptableSimilarity?: number }`
+- Response data shape:
+  ```ts
+  {
+    isCorrect: boolean,
+    matchedPhrase?: { id, phrase, language, similarity, relativeFrequency? },
+    correctAnswers: Array<{ id, phrase, language, similarity, relativeFrequency? }>,
+    normalizedUserInput: string
   }
-}
+  ```
+- Caching: Disabled (contains user input)
+
+GET `/api/vocabulary/stats`
+- Response data shape:
+  ```ts
+  {
+    totalPhrases: number,
+    totalSimilarities: number,
+    languageBreakdown: { en: number, pt: number },
+    averageSimilarity: number,
+    lastUpdated: string
+  }
+  ```
+- Caching: 15 minutes
+
+## Vocabulary (admin)
+
+All routes below require `Authorization: Bearer ${PRESHARED_KEY}`.
+
+GET `/api/vocabulary/categories`
+- Response: `Array<{ id: number, name: string }>`
+
+POST `/api/vocabulary/categories`
+- Body: `{ name: string }`
+- Response: `{ id: number, name: string }`
+
+GET `/api/vocabulary/orphans`
+- Response: `Array<{ id, phrase, language }>` (phrases with no translations)
+
+GET `/api/vocabulary/search?q=...`
+- Response: `{ [category: string]: Array<{ fromPhrase: {id, phrase, language}, toPhrase: {id, phrase, language} }> }`
+
+DELETE `/api/vocabulary/phrase/[phraseId]`
+- Deletes a phrase by id
+- Response: `204 No Content`
+
+DELETE `/api/vocabulary/deletePair?phrase1=ID&phrase2=ID`
+- Deletes a specific similarity relationship in both directions
+- Response: `{ message: 'Ok' }`
+
+POST `/api/vocabulary/import`
+- Body: `{ data: PhrasePairImport[] | PhrasePairImport, overwrite?: boolean }`
+  - `PhrasePairImport` = `{ phrase1: string, language1: string, phrase2: string, language2: string, similarity: number, categoryId?: number | category?: string|number }`
+- Response: `{ success: true, data: { imported, skipped, errors, message } }`
+- Notes: Auth required via header; request body `authKey` is not used by the server
+
+## Constants
+
+Selected values from `VOCAB_CONFIG` used by the API:
+```ts
+ACCEPTABLE_SIMILARITY = 0.5
+DEFAULT_LIMIT = 10
+MAX_LIMIT = 100
+RANDOM_LANGUAGE_CHANCE = 0.5
 ```
 
-### GET /api/vocabulary/similar/:phraseId
+## Caching Summary
 
-Returns phrases similar to the given phrase ID (synonyms, related words).
-
-#### Path Parameters
-- `phraseId`: Integer ID of the phrase to find similarities for
-
-#### Query Parameters
-- `minSimilarity` (optional): Minimum similarity threshold (default: 0.5)
-- `sameLanguage` (optional): Boolean, if true only returns phrases in the same language (default: false)
-- `limit` (optional): Maximum number of results to return (default: 10)
-
-#### Response Format
-```typescript
-{
-  success: true;
-  data: {
-    sourcePhrase: {
-      id: number;
-      phrase: string;
-      language: string;
-    };
-    similarPhrases: Array<{
-      id: number;
-      phrase: string;
-      language: string;
-      similarity: number;
-      relativeFrequency?: number;
-    }>;
-  };
-}
-```
-
-### GET /api/vocabulary/stats
-
-Returns database statistics and health information.
-
-#### Response Format
-```typescript
-{
-  success: true;
-  data: {
-    totalPhrases: number;
-    totalSimilarities: number;
-    languageBreakdown: {
-      [languageCode: string]: number;
-    };
-    averageSimilarity: number;
-    lastUpdated?: string; // ISO timestamp
-  };
-}
-```
-
-### POST /api/vocabulary/import
-
-Administrative endpoint to import vocabulary data from external sources.
-
-#### Request Body
-```typescript
-{
-  source: "github-common-words" | "custom";
-  data?: Array<{ // Only for custom source
-    englishWord: string;
-    targetWord: string;
-    rank?: number;
-  }>;
-  overwrite?: boolean; // Whether to clear existing data first
-}
-```
-
-#### Response Format
-```typescript
-{
-  success: true;
-  data: {
-    imported: number;
-    skipped: number;
-    errors: number;
-    message: string;
-  };
-}
-```
-
-## Configuration Constants
-
-The following constants control API behavior:
-
-```typescript
-export const VOCAB_CONFIG = {
-  ACCEPTABLE_SIMILARITY: 0.5,    // Minimum similarity for correct answers
-  DEFAULT_LIMIT: 10,             // Default number of results to return
-  MAX_LIMIT: 100,                // Maximum results per request
-  IMPORT_SIMILARITY: 0.9,        // Default similarity for imported word pairs
-  RANDOM_LANGUAGE_CHANCE: 0.5,   // Probability of selecting each language randomly
-};
-```
-
-## Rate Limiting
-
-- All endpoints are subject to rate limiting: 100 requests per minute per IP
-- Import endpoint has stricter limits: 5 requests per hour per IP
-
-## Caching
-
-- Random endpoint responses are not cached (to ensure randomness)
-- Practice endpoint responses are cached for 5 minutes per phrase ID
-- Similar phrases responses are cached for 1 hour per phrase ID
-- Stats endpoint is cached for 15 minutes
+- `/vocabulary/random`: no-cache
+- `/vocabulary/practice/[id]`: 5 minutes
+- `/vocabulary/stats`: 15 minutes
+- Validation and admin endpoints: no-cache

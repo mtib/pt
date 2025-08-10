@@ -1,157 +1,123 @@
-# Database Schema Documentation
+# Database Schema
 
-## Overview
+This reflects the schema created by `src/lib/database/config.ts` and initialized by `DatabaseManager`.
 
-The Portuguese Learning App uses a SQLite database to store vocabulary phrases and their relationships. This document describes the database schema, its purpose, and how it supports the learning functionality.
+## Location
 
-## Database Location
-
-The SQLite database is stored at: `cache/vocabulary.db`
+- SQLite file: `cache/vocabulary.db`
 
 ## Tables
 
 ### phrases
 
-Stores individual words and phrases in different languages.
+Stores individual words and phrases.
 
 | Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | INTEGER | PRIMARY KEY, AUTOINCREMENT | Unique identifier for each phrase |
-| phrase | TEXT | NOT NULL | The actual word or phrase text |
-| language | TEXT | NOT NULL | Language code ("en" for English, "pt" for Portuguese) |
-| relative_frequency | REAL | NULLABLE | Frequency of the phrase in the language (0.0 to 1.0), null if unknown |
+| --- | --- | --- | --- |
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT | Phrase id |
+| phrase | TEXT | NOT NULL | Phrase text |
+| language | TEXT | NOT NULL | Language code (`'en'` or `'pt'`) |
+| relative_frequency | REAL | NULL | Optional frequency score (0–1) |
 
-**Indexes:**
-- `idx_phrases_language` on `language`
-- `idx_phrases_phrase` on `phrase`
-- `idx_phrases_frequency` on `relative_frequency`
-
-**Example data:**
-```sql
-INSERT INTO phrases (phrase, language, relative_frequency) VALUES
-('hello', 'en', 0.95),
-('olá', 'pt', 0.92),
-('house', 'en', 0.85),
-('casa', 'pt', 0.88);
-```
+Indexes:
+- `idx_phrases_language (language)`
+- `idx_phrases_phrase (phrase)`
+- `idx_phrases_frequency (relative_frequency)`
 
 ### categories
 
-Stores category classifications for relationships.
+Stores category labels used on relationships.
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | INTEGER | PRIMARY KEY, AUTOINCREMENT | Unique identifier for each category |
-| name | TEXT | NOT NULL, UNIQUE | Name of the category |
-
-**Indexes:**
-- `idx_categories_name` on `name`
-
-**Example data:**
-```sql
-INSERT INTO categories (name) VALUES
-('greeting'),
-('household');
-```
+| Column | Type | Constraints |
+| --- | --- | --- |
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT |
+| name | TEXT | NOT NULL UNIQUE |
 
 ### similarity
 
-Stores relationships between phrases, including translations and synonyms.
+Stores relationships (translations, synonyms, related terms).
 
 | Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | INTEGER | PRIMARY KEY, AUTOINCREMENT | Unique identifier for each similarity relationship |
-| from_phrase_id | INTEGER | NOT NULL, FOREIGN KEY | Reference to phrases.id (source phrase) |
-| to_phrase_id | INTEGER | NOT NULL, FOREIGN KEY | Reference to phrases.id (target phrase) |
-| similarity | REAL | NOT NULL, CHECK(similarity >= 0.0 AND similarity <= 1.0) | Similarity score between phrases |
-| category_id | INTEGER | NULLABLE, FOREIGN KEY | Reference to categories.id |
+| --- | --- | --- | --- |
+| id | INTEGER | PRIMARY KEY AUTOINCREMENT | Relationship id |
+| from_phrase_id | INTEGER | NOT NULL REFERENCES phrases(id) ON DELETE CASCADE | Source phrase id |
+| to_phrase_id | INTEGER | NOT NULL REFERENCES phrases(id) ON DELETE CASCADE | Target phrase id |
+| similarity | REAL | NOT NULL CHECK(0.0 <= similarity AND similarity <= 1.0) | Similarity score |
+| category_id | INTEGER | NULL REFERENCES categories(id) ON DELETE SET NULL | Optional category |
 
-**Foreign Key Constraints:**
-- `from_phrase_id` REFERENCES `phrases(id)` ON DELETE CASCADE
-- `to_phrase_id` REFERENCES `phrases(id)` ON DELETE CASCADE
-- `category_id` REFERENCES `categories(id)` ON DELETE SET NULL
+Uniqueness and indexes:
+- UNIQUE(from_phrase_id, to_phrase_id)
+- `idx_similarity_from (from_phrase_id)`
+- `idx_similarity_to (to_phrase_id)`
+- `idx_similarity_score (similarity)`
+- `idx_similarity_bidirectional (from_phrase_id, to_phrase_id)`
+- `idx_similarity_category (category_id)`
 
-**Indexes:**
-- `idx_similarity_from` on `from_phrase_id`
-- `idx_similarity_to` on `to_phrase_id`
-- `idx_similarity_score` on `similarity`
-- `idx_similarity_category` on `category_id`
-- `idx_similarity_bidirectional` on `from_phrase_id, to_phrase_id` (unique)
+## Initialization Notes
 
-**Example data:**
-```sql
--- Translation relationship (high similarity)
-INSERT INTO similarity (from_phrase_id, to_phrase_id, similarity, category_id) VALUES
-(1, 2, 0.9, 1),  -- 'hello' -> 'olá' (greeting)
-(2, 1, 0.9, 1),  -- 'olá' -> 'hello' (greeting, bidirectional)
-(3, 4, 0.9, 2),  -- 'house' -> 'casa' (household)
-(4, 3, 0.9, 2);  -- 'casa' -> 'house' (household)
-```
+- Foreign keys are enabled via `PRAGMA foreign_keys = ON`.
+- Schema is created idempotently on first access.
 
-## Relationship Types
+## Common Queries
 
-### Cross-Language Relationships (Translations)
-- Similarity score typically 0.7 - 1.0
-- Represents translation quality
-- Always bidirectional (both directions stored)
-
-### Same-Language Relationships (Synonyms/Related)
-- Similarity score varies based on relationship strength
-- 0.8 - 1.0: Near synonyms
-- 0.6 - 0.8: Related words
-- 0.3 - 0.6: Loosely related
-- Always bidirectional
-
-## Data Integrity Rules
-
-1. **No Self-References**: `from_phrase_id` cannot equal `to_phrase_id`
-2. **Bidirectional Consistency**: If phrase A relates to phrase B with similarity X, then phrase B should relate to phrase A with the same similarity X
-3. **Similarity Range**: All similarity values must be between 0.0 and 1.0 inclusive
-4. **Language Validation**: Language codes must be valid ISO 639-1 codes
-5. **No Duplicate Relationships**: Each phrase pair can only have one similarity relationship
-
-## Query Patterns
-
-### Get Translations for Practice
+Translations for practice (cross-language):
 ```sql
 SELECT 
-    p_to.id,
-    p_to.phrase,
-    p_to.language,
-    s.similarity,
-    c.name AS category
+  p_to.id,
+  p_to.phrase,
+  p_to.language,
+  p_to.relative_frequency,
+  s.similarity
 FROM similarity s
 JOIN phrases p_from ON s.from_phrase_id = p_from.id
-JOIN phrases p_to ON s.to_phrase_id = p_to.id
-LEFT JOIN categories c ON s.category_id = c.id
-WHERE p_from.id = ? 
-    AND p_from.language != p_to.language
-    AND s.similarity >= 0.5
-ORDER BY s.similarity DESC;
+JOIN phrases p_to   ON s.to_phrase_id   = p_to.id
+WHERE p_from.id = ?
+  AND p_from.language <> p_to.language
+  AND s.similarity >= ?
+ORDER BY s.similarity DESC
+LIMIT ?;
 ```
 
-### Get Random Phrase for Practice
+Random phrase that has at least one translation:
 ```sql
-SELECT id, phrase, language 
-FROM phrases 
-WHERE language = ?
-ORDER BY RANDOM() 
+SELECT p.id, p.phrase, p.language, p.relative_frequency
+FROM phrases p
+WHERE p.language = ?
+  AND EXISTS (
+    SELECT 1
+    FROM similarity s
+    JOIN phrases p2 ON s.to_phrase_id = p2.id
+    WHERE s.from_phrase_id = p.id AND p.language <> p2.language
+  )
+ORDER BY RANDOM()
 LIMIT 1;
 ```
 
-### Get Synonyms/Related Words
+Database statistics:
 ```sql
 SELECT 
-    p_to.id,
-    p_to.phrase,
-    s.similarity,
-    c.name AS category
-FROM similarity s
-JOIN phrases p_from ON s.from_phrase_id = p_from.id
-JOIN phrases p_to ON s.to_phrase_id = p_to.id
+  (SELECT COUNT(*) FROM phrases)             AS total_phrases,
+  (SELECT COUNT(*) FROM similarity)          AS total_similarities,
+  (SELECT AVG(similarity) FROM similarity)   AS avg_similarity,
+  (SELECT COUNT(*) FROM phrases WHERE language = 'en') AS english_phrases,
+  (SELECT COUNT(*) FROM phrases WHERE language = 'pt') AS portuguese_phrases;
+```
+
+Search phrases (simple LIKE):
+```sql
+SELECT p.id, p.phrase, p.language, c.name AS category
+FROM phrases p
+LEFT JOIN similarity s ON p.id = s.from_phrase_id
 LEFT JOIN categories c ON s.category_id = c.id
-WHERE p_from.id = ? 
-    AND p_from.language = p_to.language
-    AND s.similarity >= 0.6
-ORDER BY s.similarity DESC;
+WHERE p.phrase LIKE ?
+LIMIT 100;
+```
+
+Orphan phrases (no outgoing relationships):
+```sql
+SELECT p.id, p.phrase, p.language
+FROM phrases p
+WHERE NOT EXISTS (
+  SELECT 1 FROM similarity s WHERE s.from_phrase_id = p.id
+);
 ```
