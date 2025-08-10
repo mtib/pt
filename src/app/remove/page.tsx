@@ -47,38 +47,6 @@ export default function RemovePage() {
         return () => debouncedSearch.cancel();
     }, [searchQuery, authToken]);
 
-    const handleDelete = async (phraseId: number) => {
-        if (!authToken) return;
-        try {
-            const res = await fetch(`/api/vocabulary/delete?id=${phraseId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${authToken}` },
-            });
-
-            if (res.ok) {
-                const updatedPairs = await res.json();
-                toast({
-                    title: "Success",
-                    description: "Phrase and its relationships deleted successfully.",
-                });
-                setSearchResults(updatedPairs);
-            } else {
-                const errorData = await res.json();
-                toast({
-                    title: "Error",
-                    description: `Failed to delete phrase: ${errorData.message || 'Unknown error'}`,
-                    variant: "destructive",
-                });
-            }
-        } catch {
-            toast({
-                title: "Error",
-                description: "An unexpected error occurred.",
-                variant: "destructive",
-            });
-        }
-    };
-
     const handleDeletePair = async (phrase1Id: number, phrase2Id: number) => {
         if (!authToken) return;
         try {

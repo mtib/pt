@@ -516,7 +516,7 @@ export async function searchPhrasePairs(query: string): Promise<Record<string, {
     const searchQuery = `%${query}%`;
 
     const results = await db.allQuery<{
-        category: string | null;
+        category: string;
         fromPhraseId: number;
         fromPhrase: string;
         fromLanguage: string;
