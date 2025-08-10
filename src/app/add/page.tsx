@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+// Replaced Radix Select with native select
 import { useAuth } from '@/contexts/AuthContext';
 import AuthGuard from '@/components/AuthGuard';
 import { Navbar } from '@/components/ui/navbar';
@@ -172,18 +172,19 @@ export default function AddPage() {
                                 onChange={(e) => setEnglish(e.target.value)}
                                 required
                             />
-                            <Select onValueChange={(value) => setCategory(value)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select category..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map((c) => (
-                                        <SelectItem key={c.value} value={c.value}>
-                                            {c.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <select
+                                id="category"
+                                className="w-full h-10 rounded-md border border-neutral-200 dark:border-neutral-800 dark:bg-neutral-900 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                            >
+                                <option value="">Select category...</option>
+                                {categories.map((c) => (
+                                    <option key={c.value} value={c.value}>
+                                        {c.label}
+                                    </option>
+                                ))}
+                            </select>
                             <Button type="submit" disabled={isLoading}>
                                 {isLoading ? 'Adding...' : 'Add Phrase Pair'}
                             </Button>
@@ -195,7 +196,7 @@ export default function AddPage() {
                         <CardTitle>Create New Category</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleCreateCategory} className="space-y-4">
+                        <form onSubmit={handleCreateCategory} className="space-y-4 flex flex-col">
                             <Input
                                 placeholder="Category Name"
                                 value={newCategory}

@@ -85,7 +85,7 @@ export default function OrphanPage() {
                                 <p className="mb-4">These phrases do not have a translation in the other language.</p>
                                 <div className="space-y-2">
                                     {orphans.map((phrase) => (
-                                        <div key={phrase.id} className="flex items-center justify-between p-2 border rounded">
+                                        <div key={phrase.id} className="flex items-center justify-between p-2 border rounded border-neutral-200 dark:border-neutral-800">
                                             <span>{phrase.phrase} ({phrase.language})</span>
                                             <Button variant="destructive" size="sm" onClick={() => handleDelete(phrase.id)}>
                                                 Delete

@@ -3,26 +3,33 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 
 export function Navbar() {
-    const pathname = usePathname();
+  const pathname = usePathname();
 
-    return (
-        <div className="container mx-auto my-4">
-            <Card>
-                <div className="flex justify-start items-center p-3 gap-2">
-                    <Button asChild variant="link" className={pathname === '/add' ? 'font-bold' : ''}>
-                        <Link href="/add">Add</Link>
-                    </Button>
-                    <Button asChild variant="link" className={pathname === '/remove' ? 'font-bold' : ''}>
-                        <Link href="/remove">Remove</Link>
-                    </Button>
-                    <Button asChild variant="link" className={pathname === '/orphan' ? 'font-bold' : ''}>
-                        <Link href="/orphan">Orphan</Link>
-                    </Button>
-                </div>
-            </Card>
+  const linkBase = "dark:text-blue-400 text-blue-600 hover:underline";
+  const active = "font-bold";
+
+  return (
+    <div className="container mx-auto my-4">
+      <Card>
+        <div className='flex flex-row justify-between items-center p-3'>
+          <div className="flex justify-start gap-4">
+            <Link href="/add" className={`${linkBase} ${pathname === '/add' ? active : ''}`}>
+              Add
+            </Link>
+            <Link href="/remove" className={`${linkBase} ${pathname === '/remove' ? active : ''}`}>
+              Remove
+            </Link>
+            <Link href="/orphan" className={`${linkBase} ${pathname === '/orphan' ? active : ''}`}>
+              Orphan
+            </Link>
+          </div>
+          <Link href="/" className={linkBase}>
+            Back
+          </Link>
         </div>
-    );
+      </Card>
+    </div>
+  );
 }

@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { useLearningContext } from '@/contexts';
 
@@ -20,151 +20,92 @@ interface ExplanationPanelProps {
 /**
  * Panel component for displaying word explanations
  */
-export const ExplanationPanel: React.FC<ExplanationPanelProps> = ({
-    className = '',
-}) => {
+export const ExplanationPanel: React.FC<ExplanationPanelProps> = () => {
     const { explanation, loadingExplanation } = useLearningContext();
+
+    const sections = useMemo(() => {
+        if (!explanation) return [];
+        return [
+            { title: 'Example', content: explanation.example },
+            { title: 'Definition', content: explanation.definition },
+            { title: 'Explanation', content: explanation.explanation },
+            { title: 'Grammar', content: explanation.grammar },
+            { title: 'Interesting Facts', content: explanation.facts },
+            { title: 'Synonyms & Similar Phrases', content: explanation.synonyms },
+            { title: 'Alternative Translations', content: explanation.alternatives }
+        ].filter(section => section.content);
+    }, [explanation]);
+
     if (loadingExplanation) {
         return (
-            <div className={`bg-neutral-800 p-4 ${className}`}>
-                <LoadingSpinner size="md" color="white" text="Loading explanation..." />
-            </div>
+            <ExplanationPanelWrapper>
+                <div className={`p-4 wide:flex wide:flex-col wide:h-full wide:items-center wide:justify-center text-neutral-500 dark:text-neutral-400`}>
+                    <LoadingSpinner size="lg" text="Loading explanation..." />
+                </div>
+            </ExplanationPanelWrapper>
         );
     }
 
     if (!explanation) {
         return (
-            <div className={`bg-neutral-800 p-4 text-center ${className}`}>
-                <div className="text-4xl text-neutral-600 mb-2">✨</div>
-                <p className="text-neutral-400 text-sm">
-                    Click &quot;Explain&quot; to get detailed information about a word
-                </p>
-            </div>
+            <ExplanationPanelWrapper>
+                <div className={`p-4 text-center wide:flex wide:flex-col wide:h-full wide:items-center wide:justify-center text-neutral-500 dark:text-neutral-400`}>
+                    <div className="text-4xl text-neutral-600 mb-2">✨</div>
+                    <p>
+                        Click &quot;Explain&quot; to get detailed information about a word
+                    </p>
+                </div>
+            </ExplanationPanelWrapper>
         );
     }
 
     return (
-        <div className={`bg-neutral-800 text-neutral-100 p-3 sm:p-4 overflow-y-auto ${className}`}>
+        <ExplanationPanelWrapper>
             <article>
                 {/* Word Header */}
-                <header className="mb-4 sm:mb-6">
-                    <h1 className="text-lg sm:text-2xl font-bold mb-1">
-                        {explanation.word}
-                        <span className="text-neutral-400 font-normal text-sm sm:text-lg ml-2 block sm:inline">
-                            ({explanation.englishReference})
+                <header className="mb-4 sm:mb-6 text-lg sm:text-2xl">
+                    <div className="font-bold mb-1">
+                        <span className='font-bold'>
+                            {explanation.word}
                         </span>
-                    </h1>
+                        <span className="text-neutral-500 dark:text-neutral-400 font-light sm:text-lg block sm:inline border-l pl-4 ml-4">
+                            {explanation.englishReference}
+                        </span>
+                    </div>
 
                     {/* Pronunciation */}
-                    <div className="text-neutral-400 text-xs sm:text-sm">
-                        <span className="font-mono">{explanation.pronunciationIPA}</span>
+                    <div className="text-xs sm:text-sm">
+                        <span>{explanation.pronunciationIPA}</span>
                         {explanation.pronunciationEnglish && (
-                            <span className="ml-2 block sm:inline">({explanation.pronunciationEnglish})</span>
+                            <span className="ml-2 text-neutral-500 dark:text-neutral-400 font-light">{explanation.pronunciationEnglish}</span>
                         )}
                     </div>
                 </header>
 
                 {/* Content Sections */}
-                <div className="space-y-4 sm:space-y-6">
-                    {/* Example */}
-                    {explanation.example && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-blue-400">
-                                Example
+                <div>
+                    {sections.map((section, index) => (
+                        <section key={index} className="mb-4 sm:mb-6">
+                            <h2 className="sm:text-lg font-semibold mb-2">
+                                {section.title}
                             </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-blue-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.example}
-                                </pre>
+                            <div className="">
+                                <span className="text-xs sm:text-sm whitespace-pre-wrap">
+                                    {section.content}
+                                </span>
                             </div>
                         </section>
-                    )}
-
-                    {/* Definition */}
-                    {explanation.definition && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-green-400">
-                                Definition
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-green-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.definition}
-                                </pre>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Explanation */}
-                    {explanation.explanation && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-yellow-400">
-                                Explanation
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-yellow-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.explanation}
-                                </pre>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Grammar */}
-                    {explanation.grammar && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-purple-400">
-                                Grammar
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-purple-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.grammar}
-                                </pre>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Facts */}
-                    {explanation.facts && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-orange-400">
-                                Interesting Facts
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-orange-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.facts}
-                                </pre>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Synonyms */}
-                    {explanation.synonyms && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-cyan-400">
-                                Synonyms & Similar Phrases
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-cyan-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.synonyms}
-                                </pre>
-                            </div>
-                        </section>
-                    )}
-
-                    {/* Alternatives */}
-                    {explanation.alternatives && (
-                        <section>
-                            <h2 className="text-base sm:text-lg font-semibold mb-2 text-pink-400">
-                                Alternative Translations
-                            </h2>
-                            <div className="bg-neutral-900 p-2 sm:p-3 rounded border-l-4 border-pink-500">
-                                <pre className="text-xs sm:text-sm whitespace-pre-wrap text-neutral-200">
-                                    {explanation.alternatives}
-                                </pre>
-                            </div>
-                        </section>
-                    )}
+                    ))}
                 </div>
             </article>
+        </ExplanationPanelWrapper>
+    );
+};
+
+const ExplanationPanelWrapper = ({ children }: React.PropsWithChildren) => {
+    return (
+        <div className="flex-grow wide:flex-grow-0 p-4 pb-8 w-full h-full wide:w-[var(--side-panel-width)] dark:bg-neutral-800 bg-neutral-100 border-t wide:border-t-0 wide:border-l border-neutral-700 wide:overflow-y-scroll">
+            {children}
         </div>
     );
 };

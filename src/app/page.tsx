@@ -32,7 +32,7 @@ function LearnPortugueseAppInner(): React.JSX.Element {
   // Show loading state while initializing
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="lg" color="neutral" text="Loading vocabulary..." />
         </div>
@@ -43,7 +43,7 @@ function LearnPortugueseAppInner(): React.JSX.Element {
   // Show error state if vocabulary failed to load
   if (error && !isInitialized) {
     return (
-      <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="text-red-400">Error Loading App</CardTitle>
@@ -58,20 +58,16 @@ function LearnPortugueseAppInner(): React.JSX.Element {
   }
 
   return (
-    <div className="bg-neutral-900 text-neutral-100 flex flex-col lg:flex-row w-full h-screen">
+    <div className="flex flex-col wide:flex-row w-full min-h-full wide:min-h-0 wide:h-screen overflow-y-hidden">
       {/* Main Quiz Interface */}
-      <div className="flex-1 flex">
-        <QuizInterface />
-      </div>
+      <QuizInterface />
 
       {/* Explanation Panel */}
-      <div className="lg:min-w-[400px] lg:border-l border-neutral-700 font-mono lg:h-screen lg:overflow-hidden">
-        <ExplanationPanel className="lg:border-t-0 border-t border-neutral-700 h-full" />
-      </div>
+      <ExplanationPanel />
 
       {/* Error Display */}
       {error && (
-        <div className="fixed top-4 left-4 right-4 lg:right-4 lg:left-auto lg:max-w-md z-50">
+        <div className="fixed top-4 left-4 right-4 z-50">
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-red-300">{error}</p>

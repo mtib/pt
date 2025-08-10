@@ -11,6 +11,7 @@
 import React, { useEffect, useRef } from 'react';
 import { formatTimer } from '@/utils/vocabulary';
 import { useLearningContext } from '@/contexts';
+import Link from 'next/link';
 
 /**
  * Main quiz interface component
@@ -89,51 +90,50 @@ export const QuizInterface: React.FC = () => {
     }, [handleNext, handleShow, handleSpeak, handleExplain, isAuthenticated]);
 
     const getInputClassName = (isActive: boolean) => `
-    bg-transparent border-b border-neutral-600 focus:outline-none text-neutral-100 font-bold text-base
-    ${isActive ? 'focus:border-neutral-400' : 'cursor-not-allowed'}
+    bg-transparent border-b border-neutral-600 focus:outline-none font-bold
+    ${isActive ? 'focus:border-neutral-400' : 'cursor-default'}
   `;
 
     const getButtonClassName = (disabled: boolean = false) => `
-    ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-blue-400 hover:underline cursor-pointer'}
-    text-base text-sm py-0 px-0
+    ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 dark:text-blue-400 hover:underline cursor-pointer'}
+    py-0 px-0
   `;
 
     return (
-        <div className="flex justify-center items-center flex-grow">
-            <div className="relative lg:px-2">
-                <pre className="lg:bg-neutral-800 p-3 lg:rounded-lg lg:shadow-lg lg:border border-neutral-700 overflow-x-hidden">
-                    <code>
-                        {`{
+        <div className="py-8 wide:py-0 wide:flex-grow flex flex-col justify-center items-center h-full">
+            <pre className="wide:bg-neutral-100 dark:wide:bg-neutral-800 p-3 wide:rounded-lg wide:shadow-lg wide:border border-neutral-700 overflow-x-hidden">
+                <code>
+                    {`{
   "xp": ${vocabularyXP},
   "word": {
     "portuguese": "`}
 
-                        <input
-                            ref={portugueseInputRef}
-                            name="portuguese"
-                            type="text"
-                            value={currentWord?.direction === 'en-to-pt' ? userInput : currentWord?.translation_pt || ''}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && currentWord?.direction === 'en-to-pt')}
-                            disabled={!isEditable || currentWord?.direction !== 'en-to-pt'}
-                            aria-label="Portuguese word input"
-                            autoComplete="off"
-                        />
-                        {`",
+                    <input
+                        ref={portugueseInputRef}
+                        name="portuguese"
+                        type="text"
+                        value={currentWord?.direction === 'en-to-pt' ? userInput : currentWord?.translation_pt || ''}
+                        onChange={(e) => handleInputChange(e.target.value)}
+                        className={getInputClassName(isEditable && currentWord?.direction === 'en-to-pt')}
+                        disabled={!isEditable || currentWord?.direction !== 'en-to-pt'}
+                        aria-label="Portuguese word input"
+                        autoComplete="off"
+                    />
+                    {`",
     "english": "`}
 
-                        <input
-                            ref={englishInputRef}
-                            name="english"
-                            type="text"
-                            value={currentWord?.direction === 'en-to-pt' ? currentWord?.translation_en || '' : userInput}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && currentWord?.direction === 'pt-to-en')}
-                            disabled={!isEditable || currentWord?.direction !== 'pt-to-en'}
-                            aria-label="English word input"
-                            autoComplete="off"
-                        />
-                        {`"
+                    <input
+                        ref={englishInputRef}
+                        name="english"
+                        type="text"
+                        value={currentWord?.direction === 'en-to-pt' ? currentWord?.translation_en || '' : userInput}
+                        onChange={(e) => handleInputChange(e.target.value)}
+                        className={getInputClassName(isEditable && currentWord?.direction === 'pt-to-en')}
+                        disabled={!isEditable || currentWord?.direction !== 'pt-to-en'}
+                        aria-label="English word input"
+                        autoComplete="off"
+                    />
+                    {`"
   },
   "result": "${result}",
   "dailyStats": {
@@ -144,60 +144,63 @@ export const QuizInterface: React.FC = () => {
   },
   "actions": [
     `}
-                        <button
-                            onClick={handleShow}
-                            className={getButtonClassName()}
-                            title="Show answer (S)"
-                            aria-label="Show answer"
-                        >
-                            &quot;Show&quot;
-                        </button>
-                        {`,\n    `}
-                        <button
-                            onClick={handleNext}
-                            className={getButtonClassName()}
-                            title="Next word (N)"
-                            aria-label="Next word"
-                        >
-                            &quot;Next&quot;
-                        </button>
-                        {`,\n    `}
-                        <button
-                            onClick={handleSpeak}
-                            disabled={!currentWord}
-                            className={getButtonClassName(!currentWord)}
-                            title="Speak word (Space)"
-                            aria-label="Speak word"
-                        >
-                            &quot;Speak&quot;
-                        </button>
-                        {`,\n    `}
-                        <button
-                            onClick={handleExplain}
-                            disabled={!currentWord || loadingExplanation || !isAuthenticated}
-                            className={getButtonClassName(!currentWord || loadingExplanation || !isAuthenticated)}
-                            title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}
-                            aria-label="Explain word"
-                        >
-                            &quot;{loadingExplanation ? 'Loading...' : 'Explain'}&quot;
-                        </button>
-                        {`
+                    <button
+                        onClick={handleShow}
+                        className={getButtonClassName()}
+                        title="Show answer (S)"
+                        aria-label="Show answer"
+                    >
+                        &quot;Show&quot;
+                    </button>
+                    {`,\n    `}
+                    <button
+                        onClick={handleNext}
+                        className={getButtonClassName()}
+                        title="Next word (N)"
+                        aria-label="Next word"
+                    >
+                        &quot;Next&quot;
+                    </button>
+                    {`,\n    `}
+                    <button
+                        onClick={handleSpeak}
+                        disabled={!currentWord}
+                        className={getButtonClassName(!currentWord)}
+                        title="Speak word (Space)"
+                        aria-label="Speak word"
+                    >
+                        &quot;Speak&quot;
+                    </button>
+                    {`,\n    `}
+                    <button
+                        onClick={handleExplain}
+                        disabled={!currentWord || loadingExplanation || !isAuthenticated}
+                        className={getButtonClassName(!currentWord || loadingExplanation || !isAuthenticated)}
+                        title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}
+                        aria-label="Explain word"
+                    >
+                        &quot;{loadingExplanation ? 'Loading...' : 'Explain'}&quot;
+                    </button>
+                    {`,\n    `}
+                    <Link href="/add" className={getButtonClassName(!currentWord || !isAuthenticated)}>
+                        &quot;Add&quot;
+                    </Link>
+                    {`
   ],
   "nextIn": "${remainingTime !== null ? formatTimer(remainingTime) : 'infinity'}"
 }
 `}
-                    </code>
-                </pre>
+                </code>
+            </pre>
 
-                {/* Keyboard shortcuts help - Hidden on mobile, shown on larger screens */}
-                <div className="mt-2 text-xs text-neutral-500 lg:block hidden">
-                    Shortcuts: <kbd className="px-1 py-0.5 bg-neutral-700 rounded">N</kbd> Next •
-                    <kbd className="px-1 py-0.5 bg-neutral-700 rounded">S</kbd> Show •
-                    <kbd className="px-1 py-0.5 bg-neutral-700 rounded">Space</kbd> Speak
-                    {isAuthenticated && (
-                        <> • <kbd className="px-1 py-0.5 bg-neutral-700 rounded">E</kbd> Explain</>
-                    )}
-                </div>
+            {/* Keyboard shortcuts help - Hidden on mobile, shown on larger screens */}
+            <div className="mt-2 text-xs dark:text-neutral-300 wide:block hidden">
+                Shortcuts: <kbd className="px-1 py-0.5 bg-neutral-700 text-white rounded">N</kbd> Next •
+                <kbd className="px-1 py-0.5 bg-neutral-700 text-white rounded">S</kbd> Show •
+                <kbd className="px-1 py-0.5 bg-neutral-700 text-white rounded">Space</kbd> Speak
+                {isAuthenticated && (
+                    <> • <kbd className="px-1 py-0.5 bg-neutral-700 text-white rounded">E</kbd> Explain</>
+                )}
             </div>
         </div>
     );

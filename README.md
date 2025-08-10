@@ -126,7 +126,7 @@ To use the AI explanation features:
 ### Technology Stack
 - **Frontend**: Next.js 15 with App Router
 - **UI Framework**: React 19 with TypeScript
-- **Styling**: Tailwind CSS 4 with custom design system
+- **Styling**: Tailwind CSS 4 with custom design system (no Radix/Shadcn)
 - **State Management**: React hooks with custom state management
 - **API**: Next.js API routes
 - **AI Integration**: OpenAI GPT-5-nano with structured output
@@ -144,6 +144,17 @@ To use the AI explanation features:
 - **Single Responsibility**: Each component has a clear, focused purpose
 - **Composition**: Complex UI is built from simple, composable components
 - **Props Interface**: Consistent prop interfaces with TypeScript validation
+
+### UI Components
+- **Custom + Tailwind**: All UI elements are built with Tailwind and small custom components under `src/components/ui`.
+- **No Radix/Shadcn**: Radix UI and shadcn/ui have been removed to reduce bundle size and complexity.
+- **Examples**:
+  - `Button`, `Card`, `Input` are minimal Tailwind components.
+  - Notifications use `sonner` via a lightweight wrapper.
+
+### Dependency Cleanup
+- Removed: `@shadcn/ui`, `@radix-ui/*`, `class-variance-authority`, `cmdk`, and unused icon packs.
+- Replaced Radix Select with a native `<select>` styled with Tailwind in `src/app/add/page.tsx`.
 
 #### 📦 State Management
 - **Local Storage Integration**: Automatic persistence with error handling

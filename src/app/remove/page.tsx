@@ -30,7 +30,13 @@ export default function RemovePage() {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 if (res.ok) {
-                    const data = await res.json();
+                    const data = (await res.json()) as typeof searchResults;
+                    // Filter the ones that exist in the other direction:
+                    Object.keys(data).forEach(category => {
+                        data[category] = data[category].filter(pair => {
+                            return pair.fromPhrase.id < pair.toPhrase.id;
+                        });
+                    });
                     setSearchResults(data);
                 } else {
                     setSearchResults({});
@@ -113,8 +119,11 @@ export default function RemovePage() {
                                 <div key={category} className="space-y-2">
                                     <h2 className="text-lg font-bold">{category || 'Uncategorized'}</h2>
                                     {(Array.isArray(pairs) ? pairs : []).map(({ fromPhrase, toPhrase }) => (
-                                        <div key={`${fromPhrase.id}-${toPhrase.id}`} className="flex items-center justify-between p-2 border rounded">
-                                            <span>{fromPhrase.phrase} ({fromPhrase.language}) ↔ {toPhrase.phrase} ({toPhrase.language})</span>
+                                        <div key={`${fromPhrase.id}-${toPhrase.id}`} className="flex flex-row items-center justify-between p-2 border border-neutral-200 dark:border-neutral-800 rounded">
+                                            <div className='flex flex-row justify-between flex-grow mr-8'>
+                                                <span>{fromPhrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{fromPhrase.language} ({fromPhrase.id})</span></span>
+                                                <span>{toPhrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{toPhrase.language} ({toPhrase.id})</span></span>
+                                            </div>
                                             <Button variant="destructive" size="sm" onClick={() => handleDeletePair(fromPhrase.id, toPhrase.id)}>
                                                 Delete
                                             </Button>

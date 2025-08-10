@@ -9,12 +9,12 @@ type ToastOptions = {
 };
 
 export function useToast() {
-    const toast = ({ title, description, variant }: ToastOptions) => {
-        if (variant === "destructive") {
-            sonnerToast.error(title, { description });
-        } else {
-            sonnerToast.success(title, { description });
-        }
-    };
-    return { toast };
+  const toast = ({ title, description, variant }: ToastOptions) => {
+    if (variant === "destructive") {
+      sonnerToast.error(title, { description });
+    } else {
+      sonnerToast.success(title, { description });
+    }
+  };
+  return { toast };
 }
