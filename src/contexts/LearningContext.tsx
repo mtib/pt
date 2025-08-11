@@ -41,6 +41,10 @@ interface LearningState {
     result: QuizResult;
     isEditable: boolean;
     direction: Direction | null;
+    /** The correctCount of the current practice word, null if not practice word */
+    practiceCorrectCount: number | null;
+    /** Total number of phrases to be practiced */
+    practicePhraseCount: number;
 
     // Explanation state
     explanation: Explanation | null;
@@ -180,11 +184,8 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
                     if (w.phraseId != phraseId) {
                         return w;
                     }
-                    if (w.correctCount >= CONFIG.PRACTICE_MAX_CORRECT_COUNT) {
-                        return null;
-                    }
                     return { ...w, correctCount: w.correctCount + 1 };
-                }))
+                })).filter(w => w.correctCount < CONFIG.PRACTICE_MAX_CORRECT_COUNT),
             };
         });
     }, [setPracticeWordIds, course]);
@@ -340,6 +341,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             incrementCorrectCount(currentWord.sourcePhrase.id);
 
             // Update UI state
+            setUserInput(isCorrect.phrase);
             setResult('correct');
             setIsEditable(false);
 
@@ -535,6 +537,8 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         dailyStats: dailyStatsDisplay,
         direction,
         course,
+        practiceCorrectCount: (practiceWordIds[courseToValue(course)] || []).find(w => w.phraseId === currentWord?.sourcePhrase.id)?.correctCount || null,
+        practicePhraseCount: (practiceWordIds[courseToValue(course)] || []).length,
 
         // Actions
         handleInputChange,

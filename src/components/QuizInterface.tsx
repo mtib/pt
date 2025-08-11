@@ -11,8 +11,9 @@
 import React, { useEffect, useRef } from 'react';
 import { useLearningContext } from '@/contexts';
 import Link from 'next/link';
-import { COURSES, toFullLanguageName } from '@/types';
+import { COURSES, } from '@/types';
 import { courseToValue, valueToCourse } from '@/lib/utils';
+import PhraseInput from './ui/phraseInput';
 
 /**
  * Main quiz interface component
@@ -22,14 +23,12 @@ export const QuizInterface: React.FC = () => {
         vocabularyXP,
         currentWord,
         direction,
-        userInput,
         result,
         isEditable,
         dailyStats,
         loadingExplanation,
         isAuthenticated,
         course,
-        handleInputChange,
         handleShow,
         handleNext,
         handleSpeak,
@@ -92,11 +91,6 @@ export const QuizInterface: React.FC = () => {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleNext, handleShow, handleSpeak, handleExplain, isAuthenticated]);
 
-    const getInputClassName = (isActive: boolean) => `
-    bg-transparent border-b border-neutral-600 focus:outline-none font-bold
-    ${isActive ? 'focus:border-neutral-400' : 'cursor-default'}
-  `;
-
     const getButtonClassName = (disabled: boolean = false) => `
     ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 dark:text-blue-400 hover:underline cursor-pointer'}
     py-0 px-0
@@ -118,33 +112,9 @@ export const QuizInterface: React.FC = () => {
                 </div>
             </div>
             <div className="py-8 wide:py-0 flex flex-col justify-center items-center h-full relative">
-                <div className="p-3 border-neutral-700 overflow-x-hidden flex flex-col gap-8">
-                    <div className="flex flex-col">
-                        <span className='text-neutral-400'>{toFullLanguageName(course.native)}</span>
-                        <input
-                            ref={nativeInputRef}
-                            type="text"
-                            value={direction?.from === course.native ? currentWord?.sourcePhrase?.phrase || '' : userInput}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && direction?.from !== course.native)}
-                            disabled={!isEditable || direction?.from === course.native}
-                            aria-label={`${toFullLanguageName(course.native)} word input`}
-                            autoComplete="off"
-                        />
-                    </div>
-                    <div className='flex flex-col'>
-                        <span className='text-neutral-400'>{toFullLanguageName(course.foreign)}</span>
-                        <input
-                            ref={foreignInputRef}
-                            type="text"
-                            value={direction?.from === course.foreign ? currentWord?.sourcePhrase?.phrase || '' : userInput}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            className={getInputClassName(isEditable && direction?.from !== course.foreign)}
-                            disabled={!isEditable || direction?.from === course.foreign}
-                            aria-label={`${toFullLanguageName(course.foreign)} word input`}
-                            autoComplete="off"
-                        />
-                    </div>
+                <div className="p-3 border-neutral-700 flex flex-col gap-8">
+                    <PhraseInput language={course.native} ref={nativeInputRef} />
+                    <PhraseInput language={course.foreign} ref={foreignInputRef} />
                     <div className='flex flex-row justify-between gap-4'>
                         <div className='flex flex-row gap-1 items-end'>
                             <button
