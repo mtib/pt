@@ -171,7 +171,8 @@ export const CONFIG = {
     /** Maximum correct count before removing from practice (configurable) */
     PRACTICE_MAX_CORRECT_COUNT: 3,
     /** Base practice chance */
-    BASE_PRACTICE_CHANCE: 0.3,
+    BASE_PRACTICE_CHANCE: 0.1,
+    MAX_PRACTICE_CHANCE: 0.8,
 } as const;
 
 export interface PhraseWithSimilarityAndMetadata extends PhraseWithSimilarity {

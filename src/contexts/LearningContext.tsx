@@ -297,7 +297,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
      * Chooses whether to load a practice word or a new random word
      */
     const loadNextWord = useCallback(async () => {
-        const practiceChance = CONFIG.BASE_PRACTICE_CHANCE + (0.9 - CONFIG.BASE_PRACTICE_CHANCE) * (1 - Math.exp(-(practiceWordIds[courseToValue(course)] || []).length / 8));
+        const practiceChance = CONFIG.BASE_PRACTICE_CHANCE + (CONFIG.MAX_PRACTICE_CHANCE - CONFIG.BASE_PRACTICE_CHANCE) * (1 - Math.exp(-(practiceWordIds[courseToValue(course)] || []).length / 10));
 
         const shouldUsePractice = hasPracticeWords &&
             Math.random() < practiceChance;
@@ -537,7 +537,10 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         dailyStats: dailyStatsDisplay,
         direction,
         course,
-        practiceCorrectCount: (practiceWordIds[courseToValue(course)] || []).find(w => w.phraseId === currentWord?.sourcePhrase.id)?.correctCount || null,
+        practiceCorrectCount: (() => {
+            const practiceWord = (practiceWordIds[courseToValue(course)] || []).find(w => w.phraseId === currentWord?.sourcePhrase.id);
+            return practiceWord ? practiceWord.correctCount : null;
+        })(),
         practicePhraseCount: (practiceWordIds[courseToValue(course)] || []).length,
 
         // Actions

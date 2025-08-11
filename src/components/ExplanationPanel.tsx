@@ -104,7 +104,7 @@ export const ExplanationPanel: React.FC<ExplanationPanelProps> = () => {
 
 const ExplanationPanelWrapper = ({ children }: React.PropsWithChildren) => {
     return (
-        <div className="flex-grow wide:flex-grow-0 p-4 pb-8 w-full h-full wide:w-[var(--side-panel-width)] dark:bg-neutral-800 bg-neutral-100 border-t wide:border-t-0 wide:border-l border-neutral-700 wide:overflow-y-scroll">
+        <div className="flex-grow wide:flex-grow-0 p-4 pb-8 w-full h-full wide:w-[var(--side-panel-width)] dark:bg-neutral-800 bg-neutral-100 border-t wide:border-t-0 wide:border-l border-neutral-700 wide:overflow-y-scroll backdrop-blur-md">
             {children}
         </div>
     );

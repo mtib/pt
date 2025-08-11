@@ -14,18 +14,16 @@ import Link from 'next/link';
 import { COURSES, } from '@/types';
 import { courseToValue, valueToCourse } from '@/lib/utils';
 import PhraseInput from './ui/phraseInput';
+import History from './ui/history';
 
 /**
  * Main quiz interface component
  */
 export const QuizInterface: React.FC = () => {
     const {
-        vocabularyXP,
         currentWord,
         direction,
-        result,
         isEditable,
-        dailyStats,
         loadingExplanation,
         isAuthenticated,
         course,
@@ -168,26 +166,7 @@ export const QuizInterface: React.FC = () => {
                             Add
                         </Link>}
                     </div>
-                    <div className='flex flex-row justify-center items-center gap-4'>
-                        <div className="flex flex-row gap-2 justify-center bg-white dark:bg-black p-2 m-2 rounded-md border border-neutral-400 dark:border-neutral-600">
-                            <pre>
-                                <code>{dailyStats.histogram}</code>
-                            </pre>
-                            <span>{dailyStats.todayCount}</span>
-                            <span className={
-                                dailyStats.diff > 0 ? 'dark:text-green-400 text-green-800' : 'dark:text-red-400 text-red-800'
-                            }>{dailyStats.diff > 0 ? `+${dailyStats.diff}` : dailyStats.diff}</span>
-                        </div>
-                        <div className='flex flex-row gap-1'>
-                            <span className='font-bold'>{vocabularyXP}</span>
-                            <span>XP</span>
-                        </div>
-                    </div>
-                </div>
-                <div className='absolute flex flex-col justify-end bottom-0 left-0 right-0 items-center pb-4'>
-                    <div className='text-neutral-400 text-sm'>
-                        {result}
-                    </div>
+                    <History />
                 </div>
             </div>
         </div>
