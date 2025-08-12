@@ -4,7 +4,6 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,7 +51,6 @@ export default function RootLayout({
           <ThemeProvider>
             {children}
             <Toaster />
-            <ThemeToggle />
           </ThemeProvider>
         </AuthProvider>
       </body>

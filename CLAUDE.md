@@ -103,6 +103,7 @@ All vocabulary data flows through SQLite:
 - Follow existing TypeScript strict mode patterns
 - Use functional components with hooks
 - Prefer composition over inheritance
+- Always run `npm run lint` before considering any task done
 
 ### Database Work
 - Always use transactions for multi-statement operations
