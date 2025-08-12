@@ -65,7 +65,7 @@ interface LearningState {
         todayCount: number;
         diff: number;
         histogram: string;
-        histogramData: Array<{date: string; count: number; normalized: number}>;
+        histogramData: Array<{ date: string; count: number; normalized: number; }>;
         practiceListLength: number;
     };
 }
@@ -363,7 +363,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
      */
     const handleShow = useCallback(() => {
         if (!currentWord) return;
-        
+
         // Prevent conflicts with explanation system - don't show if already explaining or explained
         if (result === 'explaining' || result === 'explained') return;
 
@@ -380,7 +380,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
 
         // Add to practice list
         addToPractice(currentWord);
-    }, [currentWord, addToPractice]);
+    }, [currentWord, addToPractice, result]);
 
     useEffect(() => {
         if (result === 'correct') {
@@ -412,11 +412,11 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
-        
+
         // Reset explanation state to clean up UI
         setLoadingExplanation(false);
         setExplanation(null);
-        
+
         if (result === 'incorrect' || result === 'explained' || result === 'explaining') {
             loadNextWord();
         }
@@ -440,7 +440,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
-        
+
         // Create new abort controller for this request
         abortControllerRef.current = new AbortController();
 

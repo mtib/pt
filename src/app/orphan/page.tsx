@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import AuthGuard from '@/components/AuthGuard';
 import { Navbar } from '@/components/ui/navbar';
 import { Phrase } from '@/types';
+import { cn } from '@/lib/utils';
 
 export default function OrphanPage() {
     const { authToken } = useAuth();
@@ -71,33 +71,55 @@ export default function OrphanPage() {
 
     return (
         <AuthGuard>
-            <div className="container mx-auto p-4">
+            <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900">
                 <Navbar />
-                <Card className="max-w-2xl mx-auto">
-                    <CardHeader>
-                        <CardTitle>Orphan Phrases</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <p>Loading...</p>
-                        ) : (
-                            <>
-                                <p className="mb-4">These phrases do not have a translation in the other language.</p>
-                                <div className="space-y-2">
-                                    {orphans.map((phrase) => (
-                                        <div key={phrase.id} className="flex items-center justify-between p-2 border rounded border-neutral-200 dark:border-neutral-800">
-                                            <span>{phrase.phrase}<span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>{phrase.language}</span></span>
-                                            <Button variant="destructive" size="sm" onClick={() => handleDelete(phrase.id)}>
-                                                Delete
-                                            </Button>
+                <div className="container mx-auto p-4">
+                    <div className="max-w-2xl mx-auto">
+                        <div className={cn(
+                            'bg-white dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700'
+                        )}>
+                            <div className="p-6 pb-4">
+                                <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                                    Orphan Phrases
+                                </h1>
+                                <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                                    These phrases do not have a translation in the other language
+                                </p>
+                            </div>
+                            
+                            <div className="px-6 pb-6">
+                                {isLoading ? (
+                                    <div className="text-sm text-neutral-600 dark:text-neutral-400">
+                                        Loading...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2">
+                                            {orphans.map((phrase) => (
+                                                <div key={phrase.id} className="flex items-center justify-between p-3 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-900">
+                                                    <span className="text-sm text-neutral-900 dark:text-neutral-100">
+                                                        {phrase.phrase}
+                                                        <span className='font-light ml-1 text-neutral-500 dark:text-neutral-400'>
+                                                            {phrase.language}
+                                                        </span>
+                                                    </span>
+                                                    <Button variant="destructive" size="sm" onClick={() => handleDelete(phrase.id)}>
+                                                        Delete
+                                                    </Button>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                                {orphans.length === 0 && <p>No orphan phrases found.</p>}
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                                        {orphans.length === 0 && (
+                                            <div className="text-sm text-neutral-600 dark:text-neutral-400">
+                                                No orphan phrases found.
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </AuthGuard>
     );

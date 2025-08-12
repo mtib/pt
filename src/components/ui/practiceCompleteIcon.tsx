@@ -36,12 +36,12 @@ const PracticeCompleteIcon = ({ language }: PropsWithChildren<PracticeCompleteIc
 
     const previousCorrectCountRef = useRef<number | null>(null);
     const previousWordIdRef = useRef<number | null>(null);
-    
+
     // Track previous correct count and word ID to detect completion
     useEffect(() => {
         previousCorrectCountRef.current = practiceCorrectCount;
         previousWordIdRef.current = currentWord?.sourcePhrase.id || null;
-    }, [currentWord?.sourcePhrase.id]); // Update when word changes, not when count changes
+    }, [currentWord?.sourcePhrase.id, practiceCorrectCount]); // Update when word changes, not when count changes
 
     // Only show when:
     // 1. The result is 'correct' (text is green)
@@ -53,13 +53,13 @@ const PracticeCompleteIcon = ({ language }: PropsWithChildren<PracticeCompleteIc
     if (direction?.to !== language) {
         return null;
     }
-    
+
     // Show if: previous count was target-1 AND current count is null (word was removed)
     // AND this is the same word (not a new word loading)
     const wasAboutToComplete = previousCorrectCountRef.current === CONFIG.PRACTICE_MAX_CORRECT_COUNT - 1;
     const nowCompleted = practiceCorrectCount === null;
     const isSameWord = previousWordIdRef.current === currentWord?.sourcePhrase.id;
-    
+
     if (!wasAboutToComplete || !nowCompleted || !isSameWord) {
         return null;
     }
