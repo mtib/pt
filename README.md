@@ -132,6 +132,7 @@ To use the AI explanation features:
 - **AI Integration**: OpenAI GPT-5-nano with structured output
 - **Data Validation**: Zod for runtime type checking
 - **Code Quality**: ESLint + TypeScript for type safety
+- **Testing**: Jest with React Testing Library for comprehensive unit testing
 
 ### Key Design Patterns
 
@@ -323,7 +324,26 @@ The application is optimized for deployment on Vercel:
 - **Comprehensive Error Handling**: Network errors, API failures, and edge cases are handled
 
 ### Testing Strategy
-The application includes built-in error handling and validation:
+
+#### Unit Testing with Jest
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode during development
+npm run test:watch
+
+# Generate coverage reports
+npm run test:coverage
+```
+
+The application uses Jest with React Testing Library for comprehensive testing:
+- **Test Coverage**: Utility functions, text normalization, XP calculations
+- **Advanced Text Processing**: Tests for 16+ different apostrophe and quote types
+- **CI Integration**: Automated testing in GitHub Actions pipeline
+- **Coverage Reports**: Integrated with Codecov for coverage tracking
+
+#### Additional Quality Assurance
 - Input validation with Zod schemas
 - API error handling with custom error types
 - Client-side error boundaries

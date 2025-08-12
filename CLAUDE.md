@@ -12,6 +12,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint:fix` - Auto-fix ESLint issues
 - `npm run type-check` - Run TypeScript type checking
 
+### Testing
+- `npm test` - Run Jest test suite
+- `npm run test:watch` - Run tests in watch mode for development
+- `npm run test:coverage` - Run tests with coverage reports
+
 ### Database Management
 - `npm run migrate-vocab` - Import vocabulary data (server must be running)
 - `npm run migrate-vocab:dry-run` - Preview vocabulary import
@@ -30,6 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database**: SQLite with custom ORM layer
 - **AI Integration**: OpenAI GPT-5-nano for explanations
 - **State Management**: React Context + hooks with localStorage persistence
+- **Testing**: Jest with React Testing Library and jsdom environment
 
 ### Project Structure
 
@@ -51,6 +57,8 @@ src/
 │   └── database-api-client.ts  # API client for database operations
 ├── hooks/                 # Custom React hooks
 ├── types/                 # TypeScript type definitions
+├── utils/                 # Utility functions
+│   └── __tests__/        # Jest test files
 └── pages/api/            # Next.js API routes
 ```
 
@@ -71,6 +79,7 @@ src/
 - **Practice System**: Adaptive algorithm increases practice chance based on mistakes
 - **XP Calculation**: Time-based scoring (1-10 XP based on response speed)
 - **Answer Validation**: Fuzzy matching with phrase similarity scoring
+- **Text Normalization**: Advanced text processing handles multiple apostrophe types, accents, and diacritics
 - **Multi-language Support**: Portuguese ↔ English, German ↔ English courses
 - **Practice Word Completion**: Words require 3 correct answers to be removed from practice list
 - **Visual Feedback**: Green checkmark appears when practice words are cleared
@@ -138,7 +147,20 @@ Database is automatically created at `cache/vocabulary.db` on first run.
 
 ## Testing Strategy
 
-No formal test framework is configured. Testing approach:
+### Unit Testing with Jest
+- **Framework**: Jest with React Testing Library for comprehensive testing
+- **Configuration**: Next.js integrated Jest setup with jsdom environment
+- **Coverage**: `npm run test:coverage` generates coverage reports
+- **Test Location**: Tests are located in `src/utils/__tests__/` directory
+- **CI Integration**: Tests run automatically in GitHub Actions CI pipeline
+
+### Test Coverage Areas
+- **Utility Functions**: Comprehensive tests for text normalization, XP calculation, and error handling
+- **Text Normalization**: Tests all apostrophe types: `'` `'` `'` `‚` `‛` `"` `"` `„` `‟` `` ` `` `´` `ʹ` `ʺ` `ˈ` `ˊ` `ˋ` `-`
+- **XP System**: Validates time-based scoring algorithm with edge cases
+- **Error Handling**: Tests safe error message creation for different error types
+
+### Additional Testing
 - Manual testing through the quiz interface
 - Database integrity checks via API endpoints
 - TypeScript compilation serves as static analysis
@@ -151,7 +173,8 @@ No formal test framework is configured. Testing approach:
 2. Add database schema changes in `src/lib/database/config.ts`
 3. Implement API routes in `src/pages/api/`
 4. Create React components with Context integration
-5. Run `npm run type-check` and `npm run lint`
+5. Write unit tests in `src/**/__tests__/` directories
+6. Run `npm test`, `npm run type-check` and `npm run lint`
 
 ### Database Schema Changes
 1. Update `src/lib/database/config.ts` 
