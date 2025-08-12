@@ -1,20 +1,29 @@
 /**
  * Quiz interface component for the Portuguese learning application.
  * 
- * This component renders the main quiz interface with a JSON-style layout,
- * input fields for Portuguese/English translations, and action buttons.
+ * This component renders the main quiz interface with:
+ * - Language input fields (phraseInput) with practice icons
+ * - Keyboard shortcuts component with underlined letters
+ * - Progress history visualization 
+ * - Course selection dropdown
+ * 
+ * Features keyboard shortcuts with authentication-conditional behavior:
+ * - N: Next word (always)
+ * - S: Show answer (non-authenticated only) 
+ * - P: Speak word (always, changed from Space)
+ * - E: Explain word (authenticated only)
  * 
  * @author Portuguese Learning App
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import React, { useEffect, useRef } from 'react';
 import { useLearningContext } from '@/contexts';
-import Link from 'next/link';
 import { COURSES, } from '@/types';
 import { courseToValue, valueToCourse } from '@/lib/utils';
 import PhraseInput from './ui/phraseInput';
 import History from './ui/history';
+import Shortcuts from './ui/shortcuts';
 
 /**
  * Main quiz interface component
@@ -24,11 +33,10 @@ export const QuizInterface: React.FC = () => {
         currentWord,
         direction,
         isEditable,
-        loadingExplanation,
         isAuthenticated,
         course,
-        handleShow,
         handleNext,
+        handleShow,
         handleSpeak,
         handleExplain,
         setCourse,
@@ -67,20 +75,22 @@ export const QuizInterface: React.FC = () => {
                 case 's':
                 case 'S':
                     if (e.ctrlKey || e.metaKey) break; // Allow Ctrl+S/Cmd+S
-                    e.preventDefault();
-                    handleShow();
+                    if (!isAuthenticated) { // Only handle Show when not authenticated (auth users use Explain)
+                        e.preventDefault();
+                        handleShow();
+                    }
                     break;
-                case ' ': // Spacebar
+                case 'p':
+                case 'P':
+                    if (e.ctrlKey || e.metaKey) break; // Allow Ctrl+P/Cmd+P (print)
                     e.preventDefault();
-                    handleSpeak();
+                    handleSpeak(); // Changed from Space to P for better UX
                     break;
                 case 'e':
                 case 'E':
                     if (e.ctrlKey || e.metaKey) break; // Allow Ctrl+E/Cmd+E
-                    if (isAuthenticated) {
-                        e.preventDefault();
-                        handleExplain();
-                    }
+                    e.preventDefault();
+                    handleExplain();
                     break;
             }
         };
@@ -88,11 +98,6 @@ export const QuizInterface: React.FC = () => {
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleNext, handleShow, handleSpeak, handleExplain, isAuthenticated]);
-
-    const getButtonClassName = (disabled: boolean = false) => `
-    ${disabled ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 dark:text-blue-400 hover:underline cursor-pointer'}
-    py-0 px-0
-  `;
 
     return (
         <div className='wide:flex-grow'>
@@ -113,59 +118,7 @@ export const QuizInterface: React.FC = () => {
                 <div className="p-3 border-neutral-700 flex flex-col gap-8">
                     <PhraseInput language={course.native} ref={nativeInputRef} />
                     <PhraseInput language={course.foreign} ref={foreignInputRef} />
-                    <div className='flex flex-row justify-between gap-4'>
-                        <div className='flex flex-row gap-1 items-end'>
-                            <button
-                                onClick={handleNext}
-                                className={getButtonClassName()}
-                                title="Next word (N)"
-                                aria-label="Next word"
-                            >
-                                Next
-                            </button>
-                            <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">N</kbd>
-                        </div>
-                        <div className='flex flex-row gap-1 items-end'>
-                            <button
-                                onClick={handleShow}
-                                className={getButtonClassName()}
-                                title="Show answer (S)"
-                                aria-label="Show answer"
-                            >
-                                Show
-                            </button>
-                            <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">S</kbd>
-                        </div>
-                        <div className='flex flex-row gap-1 items-end'>
-                            <button
-                                onClick={handleSpeak}
-                                disabled={!currentWord}
-                                className={getButtonClassName(!currentWord)}
-                                title="Speak word (Space)"
-                                aria-label="Speak word"
-                            >
-                                Speak
-                            </button>
-                            <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">␣</kbd>
-                        </div>
-                        {isAuthenticated && (
-                            <div className='flex flex-row gap-1 items-end'>
-                                <button
-                                    onClick={handleExplain}
-                                    disabled={!currentWord || loadingExplanation || !isAuthenticated}
-                                    className={getButtonClassName(!currentWord || loadingExplanation || !isAuthenticated)}
-                                    title={!isAuthenticated ? "Authentication required" : "Explain word (E)"}
-                                    aria-label="Explain word"
-                                >
-                                    Explain
-                                </button>
-                                <kbd className="inline px-1 py-0.5 bg-neutral-700 text-white rounded text-xs">E</kbd>
-                            </div>
-                        )}
-                        {isAuthenticated && <Link href="/add" className={getButtonClassName(!currentWord || !isAuthenticated)}>
-                            Add
-                        </Link>}
-                    </div>
+                    <Shortcuts />
                     <History />
                 </div>
             </div>

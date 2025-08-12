@@ -65,6 +65,7 @@ interface LearningState {
         todayCount: number;
         diff: number;
         histogram: string;
+        histogramData: Array<{date: string; count: number; normalized: number}>;
         practiceListLength: number;
     };
 }
@@ -113,6 +114,8 @@ interface LearningProviderProps {
 export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) => {
     // Simple local state management (hooks can be added later)
     const lastQuestionRevealTimeRef = useRef<number>(0);
+    // AbortController for canceling explanation requests during state transitions
+    const abortControllerRef = useRef<AbortController | null>(null);
     const [course, setCourse] = useLocalStorage<CourseLanguages>(STORAGE_KEYS.COURSE, COURSES[0]);
     const [vocabularyXP, setVocabularyXP] = useLocalStorage<Record<string, number>>(STORAGE_KEYS.VOCABULARY_XP, {});
     const [practiceWordIds, setPracticeWordIds] = useLocalStorage<Record<string, PracticePhrase[]>>(STORAGE_KEYS.PRACTICE_WORDS, {});
@@ -127,6 +130,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
     const {
         getTodayCount,
         getDaysDiff,
+        getLast14DaysData,
         getLast14DaysHistogram,
         incrementTodayCount,
     } = useDailyStats();
@@ -359,6 +363,9 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
      */
     const handleShow = useCallback(() => {
         if (!currentWord) return;
+        
+        // Prevent conflicts with explanation system - don't show if already explaining or explained
+        if (result === 'explaining' || result === 'explained') return;
 
         const correctAnswer = currentWord.targetOptions[0];
 
@@ -400,7 +407,17 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
      * Advances to the next word
      */
     const handleNext = useCallback(() => {
-        if (result === 'incorrect' || 'explained') {
+        // Cancel any pending explanation request to prevent showing on wrong word
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        
+        // Reset explanation state to clean up UI
+        setLoadingExplanation(false);
+        setExplanation(null);
+        
+        if (result === 'incorrect' || result === 'explained' || result === 'explaining') {
             loadNextWord();
         }
     }, [loadNextWord, result]);
@@ -418,6 +435,14 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
      */
     const handleExplain = useCallback(async () => {
         if (!currentWord || !authToken) return;
+
+        // Cancel any existing explanation request to prevent multiple concurrent requests
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        
+        // Create new abort controller for this request
+        abortControllerRef.current = new AbortController();
 
         setLoadingExplanation(true);
         setResult('explaining');
@@ -448,7 +473,8 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
                 body: JSON.stringify({
                     sourcePhraseId,
                     expectedAnswerId
-                })
+                }),
+                signal: abortControllerRef.current.signal
             });
 
             if (!response.ok) {
@@ -462,10 +488,15 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
             setResult('explained');
 
         } catch (err) {
+            // Don't show error if request was aborted
+            if (err instanceof Error && err.name === 'AbortError') {
+                return;
+            }
             console.error('Failed to explain word:', err);
             setError(err instanceof Error ? err.message : 'An unknown error occurred.');
         } finally {
             setLoadingExplanation(false);
+            abortControllerRef.current = null;
             // Do not automatically advance, let user review explanation
         }
     }, [currentWord, authToken, addToPractice]);
@@ -517,8 +548,9 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
         todayCount: getTodayCount(),
         diff: getDaysDiff(),
         histogram: getLast14DaysHistogram(),
+        histogramData: getLast14DaysData(),
         practiceListLength: (practiceWordIds[courseToValue(course)] || []).length,
-    }), [getTodayCount, getDaysDiff, getLast14DaysHistogram, practiceWordIds, course]);
+    }), [getTodayCount, getDaysDiff, getLast14DaysHistogram, getLast14DaysData, practiceWordIds, course]);
 
     // Context value
     const contextValue: LearningContextType = {

@@ -1,5 +1,6 @@
 import { SupportedLanguage, toFullLanguageName } from "@/types";
 import PracticeIcon from "./practiceIcon";
+import PracticeCompleteIcon from "./practiceCompleteIcon";
 import { useLearningContext } from "@/contexts";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ const PhraseInput = ({ ref, language }: PhraseInputProps) => {
     return (
         <div className='flex flex-col relative'>
             <PracticeIcon language={language} />
+            <PracticeCompleteIcon language={language} />
             <span className='text-neutral-400'>{toFullLanguageName(language)}</span>
             <input
                 ref={ref}
