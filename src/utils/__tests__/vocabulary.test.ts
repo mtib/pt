@@ -12,27 +12,30 @@ describe('normalizeText', () => {
     expect(normalizeText("don't")).toBe('dont');
     expect(normalizeText("don't")).toBe('dont'); // left single quote
     expect(normalizeText("don't")).toBe('dont'); // right single quote
-    
+
     // Low quotation marks
     expect(normalizeText("don‚t")).toBe('dont'); // single low-9 quotation mark
     expect(normalizeText("don‛t")).toBe('dont'); // single high-reversed-9 quotation mark
-    
+
     // Double quotes
     expect(normalizeText('say "hello"')).toBe('sayhello'); // left and right double quotes
     expect(normalizeText('say „hello"')).toBe('sayhello'); // double low-9 quotation mark
     expect(normalizeText('say ‟hello"')).toBe('sayhello'); // double high-reversed-9 quotation mark
-    
+
     // Grave and acute accents
     expect(normalizeText("don`t")).toBe('dont'); // grave accent
     expect(normalizeText("don´t")).toBe('dont'); // acute accent
-    
+
     // Modifier letters
     expect(normalizeText("donʹt")).toBe('dont'); // modifier letter prime
     expect(normalizeText("donʺt")).toBe('dont'); // modifier letter double prime
     expect(normalizeText("donˈt")).toBe('dont'); // modifier letter vertical line (primary stress)
     expect(normalizeText("donˊt")).toBe('dont'); // modifier letter acute accent
     expect(normalizeText("donˋt")).toBe('dont'); // modifier letter grave accent
-    
+
+    // Real world examples
+    expect(normalizeText("won’t")).toBe('wont');
+
     // Hyphen
     expect(normalizeText("twenty-one")).toBe('twentyone');
   });

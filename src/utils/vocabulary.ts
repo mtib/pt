@@ -26,7 +26,7 @@ import { CONFIG } from '@/types';
 export function normalizeText(str: string): string {
     return str
         .normalize('NFD') // Decompose accents
-        .replace(/[''‚‛""„‟`´ʹʺˈˊˋ'-]/g, '') // Remove apostrophes, quotes, and similar characters
+        .replace(/[''\u0027\u2019‚‛""„‟`´ʹʺˈˊˋ-]/g, '') // Remove apostrophes, quotes, and similar characters
         .replace(/\p{Diacritic}/gu, '') // Remove accents
         .replace(/\s+/g, '') // Remove spaces
         .toLowerCase();
